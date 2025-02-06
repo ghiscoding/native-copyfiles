@@ -3,7 +3,7 @@
 [![Vitest](https://img.shields.io/badge/tested%20with-vitest-fcc72b.svg?logo=vitest)](https://vitest.dev/)
 [![codecov](https://codecov.io/gh/ghiscoding/native-copyfiles/branch/main/graph/badge.svg)](https://codecov.io/gh/ghiscoding/native-copyfiles)
 [![npm](https://img.shields.io/npm/v/native-copyfiles.svg)](https://www.npmjs.com/package/native-copyfiles)
-[![npm](https://img.shields.io/npm/dy/native-copyfiles)](https://www.npmjs.com/package/native-copyfiles)
+<!-- [![npm](https://img.shields.io/npm/dy/native-copyfiles)](https://www.npmjs.com/package/native-copyfiles) -->
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/native-copyfiles?color=success&label=gzip)](https://bundlephobia.com/result?p=native-copyfiles)
 
 ## Copyfiles
@@ -111,4 +111,19 @@ import { copyfiles } from 'native-copyfiles';
 
 copyfiles([paths], opt, callback);
 ```
-takes an array of paths, last one is the destination path, also takes an optional argument which the `-u` option if a number, otherwise if it's `true` it's the flat option or if it is an object it is a hash of the various options (the long version e.g. up, all, flat, exclude, error, verbose, follow, and soft)
+
+The first argument is an array of paths whose last element is assumed the destination path.
+The second argument (`opt`) being the options argument 
+and finally the third and last argument is a callback function which is executed after after all files copied
+
+```js
+{
+	verbose: bool,    // enable debug messages
+	up: number,       // -u value
+	soft: bool,	      // soft copy (skip existing dirs & files)
+	exclude: string,  // exclude pattern
+	all: bool,	      // include dot files
+	follow: bool,	    // Follow symlinked directories when expanding ** patterns
+	error: bool       // raise errors if no files copied
+}
+```
