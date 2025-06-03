@@ -1,0 +1,108 @@
+name: 🏷️ Publish NPM Latest
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        type: boolean
+        required: false
+        description: Dry-Run
+      version:
+        description: 'Fixed Version'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  deploy-npm-latest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Retrieve current Date Time in EST
+        shell: bash
+        run: echo "START_TIME=$(TZ=":America/New_York" date -R|sed 's/.....$//')" >> $GITHUB_ENV
+
+      - name: Current datetime - ${{ env.START_TIME }}
+        run: echo ${{ env.START_TIME }}
+
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - if: ${{ github.event.pull_request.merged != true && contains('["ghiscoding"]', github.actor) != true }}
+        name: Exit early when current actor is not allowed to push new release
+        run: |
+          echo "Error: Your GitHub username (${{ github.actor }}) is not on the allowed list of admins for this workflow"
+          exit 1
+
+      - name: Set NodeJS
+        uses: actions/setup-node@v4
+        with:
+          registry-url: 'https://registry.npmjs.org/'
+          node-version: 22
+
+      - name: Get npm cache directory path
+        id: npm-cache-dir-path
+        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: ${{ steps.npm-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 🧪 Dry-Run - GitHub Release
+        if: ${{ inputs.dryrun == true }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          npm whoami
+          npx release-it --ci --dry-run
+
+      - name: OTP
+        if: ${{ inputs.dryrun != true }}
+        uses: step-security/wait-for-secrets@v1
+        id: wait-for-secrets
+        with:
+          secrets: |
+            OTP:
+              name: 'OTP to publish package'
+              description: 'OTP from authenticator app'
+
+      - name: Fixed Version Release ⚙️ / NPM Publish 📦
+        if: ${{ inputs.version != '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          npm whoami
+          npx release-it ${{ inputs.version }} --ci --plugins.'@release-it/conventional-changelog'.ignoreRecommendedBump=false --npm.otp=${{ steps.wait-for-secrets.outputs.OTP }}
+
+      - name: GitHub Release 🏷️ / NPM Publish 📦
+        if: ${{ inputs.dryrun != true && inputs.version == '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          npm whoami
+          npx release-it --ci --npm.otp=${{ steps.wait-for-secrets.outputs.OTP }}
