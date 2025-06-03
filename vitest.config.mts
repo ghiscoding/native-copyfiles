@@ -11,7 +11,7 @@ export default defineConfig({
       exclude: [
         ...configDefaults.exclude,
         '**/__tests__/**',
-        '**/interfaces/**',
+        '**/interfaces.ts',
         '**/*.d.ts',
       ],
       provider: 'v8',

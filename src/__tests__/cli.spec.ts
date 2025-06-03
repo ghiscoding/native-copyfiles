@@ -39,21 +39,31 @@ describe('copyfiles', () => {
       '**/*.ps.txt'
     ]);
 
+    // Mock process.exit so it doesn't kill the test runner
+    // @ts-ignore
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
+      // Do nothing
+    });
+
     import('../cli')
-      .then((cli: any) => {
-        console.log(cli);
-      })
       .then(() => {
-        readdir('output2/input2', (err, files) => {
-          expect(files).toEqual(['a.txt', 'b.txt']);
-          done();
-        });
+        // Wait a tick to ensure file writes are complete
+        setTimeout(() => {
+          readdir('output2/input2', (err, files) => {
+            expect(files).toEqual(['a.txt', 'b.txt']);
+            exitSpy.mockRestore();
+            done();
+          });
+        }, 100); // 100ms delay to allow async file writes
       })
       .catch(e => {
-        readdir('output2/input2', (err, files) => {
-          expect(files).toEqual(['a.txt', 'b.txt']);
-          done();
-        });
+        setTimeout(() => {
+          readdir('output2/input2', (err, files) => {
+            expect(files).toEqual(['a.txt', 'b.txt']);
+            exitSpy.mockRestore();
+            done();
+          });
+        }, 100);
       });
-  }));
-});
+  }))
+})
