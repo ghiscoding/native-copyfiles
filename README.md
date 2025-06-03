@@ -33,7 +33,7 @@ npm install native-copyfiles -g
     -e, --exclude  pattern or glob to exclude (may be passed multiple times) [string|string[]]
     -E, --error    throw error if nothing is copied                          [boolean]
     -V, --verbose  print more information to console                         [boolean]
-    -F, --follow   follow symbolink links                                    [boolean]
+    -F, --follow   follow symbolic links                                     [boolean]
     -v, --version  Show version number                                       [boolean]
     -h, --help     Show help                                                 [boolean]
 ```
@@ -102,7 +102,7 @@ copyfiles "**/*.test.js" -f ./foo/**/*.js out -e
 Other options include
 
 - `-a` or `--all` which includes files that start with a dot.
-- `-F` or `--follow` which follows symbolinks
+- `-F` or `--follow` which follows symbolic links
 
 ### JavaScript API
 
