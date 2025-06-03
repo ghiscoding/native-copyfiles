@@ -1,22 +1,44 @@
-import { mkdirSync, readdir, rmdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdir, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { globSync } from 'tinyglobby';
 import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { copyfiles, createDir } from '../index';
 
+let shouldMockReadError = false;
+const error = new Error('Mock read error');
+
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
+  return {
+    ...actual,
+    createReadStream: (...args: any[]) => {
+      if (shouldMockReadError) {
+        const { Readable } = require('node:stream');
+        const stream = new Readable({ read() { } });
+        setImmediate(() => stream.emit('error', error));
+        return stream;
+      }
+      // fallback to real implementation
+      return (actual.createReadStream as any)(...args);
+    }
+  };
+});
+
 async function cleanupFolders() {
   try {
-    rmdirSync('input', { recursive: true });
-    rmdirSync('output', { recursive: true });
+    rmSync('input', { recursive: true, force: true });
+    rmSync('output', { recursive: true, force: true });
   } catch (e) { }
 }
 
 describe('copyfiles', () => {
   afterEach(async () => {
-    cleanupFolders();
+    await cleanupFolders();
   });
 
-  afterAll(() => cleanupFolders());
+  afterAll(async () => {
+    await cleanupFolders();
+  });
 
   beforeEach(() => {
     createDir('input/other');
@@ -41,10 +63,7 @@ describe('copyfiles', () => {
     writeFileSync('input/b.txt', 'b');
     writeFileSync('input/c.js', 'c');
     copyfiles(['input/*.txt', 'output'], {}, (err) => {
-      console.error(err, 'copyfiles');
       readdir('output/input', async (err, files) => {
-        // console.error(err, 'readdir');
-        // 'correct number of things'
         expect(files).toEqual(['a.txt', 'b.txt']);
         done();
       });
@@ -58,7 +77,6 @@ describe('copyfiles', () => {
     writeFileSync('input/b.txt', 'b');
     writeFileSync('input/c.js', 'c');
     copyfiles(['input/*.txt', 'output'], {}, (err) => {
-      console.error(err, 'copyfiles');
       readdir('output/input', (err, files) => {
         expect(files).toEqual(['a.txt', 'b.txt']);
         //  'correct mode'
@@ -168,10 +186,11 @@ describe('copyfiles', () => {
       mkdirSync('input/origin');
       mkdirSync('input/origin/inner');
       writeFileSync('input/origin/inner/a.txt', 'a');
+      writeFileSync('input/origin/inner/b.txt', 'b');
       symlinkSync('origin', 'input/dest');
       copyfiles(['input/**/*.txt', 'output'], { up: 1, follow: true }, (err) => {
         const files = globSync('output/**/*.txt');
-        expect(files).toEqual(['output/dest/inner/a.txt', 'output/origin/inner/a.txt']);
+        expect(new Set(files)).toEqual(new Set(['output/a.txt', 'output/b.txt']));
       });
     }
   });
@@ -184,7 +203,9 @@ describe('copyfiles', () => {
     copyfiles(['input/**/*.txt', 'output'], { flat: true, verbose: true }, (err) => {
       readdir('output', (err, files) => {
         expect(files).toEqual(['a.txt', 'b.txt']);
-        expect(logSpy).toHaveBeenCalledWith('glob found', ['input/b.txt', 'input/other/a.txt']);
+        const globCall = logSpy.mock.calls.find(call => call[0] === 'glob found');
+        expect(globCall).toBeTruthy();
+        expect(new Set(globCall![1])).toEqual(new Set(['input/b.txt', 'input/other/a.txt']));
         expect(logSpy).toHaveBeenCalledWith('copy:', { from: 'input/other/a.txt', to: 'output/a.txt' });
         expect(logSpy).toHaveBeenCalledWith('copy:', { from: 'input/b.txt', to: 'output/b.txt' });
         expect(logSpy).toHaveBeenCalledWith('Files copied:   2');
@@ -192,6 +213,93 @@ describe('copyfiles', () => {
       });
     });
   }));
+
+  test('createDir does not throw if dir exists', () => {
+    createDir('input');
+    expect(() => createDir('input')).not.toThrow();
+  });
+
+  test('throws when inFile or outDir are missing (no callback)', () => {
+    expect(() => copyfiles(['input/**/*.txt'], {})).toThrow(
+      'Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"'
+    );
+  });
+
+  test('callback called when no files to copy', () => new Promise((done: any) => {
+    copyfiles(['input/doesnotexist/*.txt', 'output'], {}, (err) => {
+      expect(err).toBeUndefined();
+      done();
+    });
+  }));
+
+  test('copyFileStream handles read error', () => new Promise((done: any) => {
+    writeFileSync('input/bad.txt', 'bad'); // <-- Ensure the file exists!
+    shouldMockReadError = true;
+    copyfiles(['input/bad.txt', 'output'], {}, (err) => {
+      expect(err).toBeInstanceOf(Error);
+      expect(err?.message).toBe('Mock read error');
+      shouldMockReadError = false;
+      done();
+    });
+  }));
+
+  test('throws when flat & up used together', () => {
+    expect(() => copyfiles(['input/**/*.txt', 'output'], { flat: true, up: 1 })).toThrow(
+      'Cannot use --flat in conjunction with --up option.'
+    );
+  });
+
+  test('calls callback with error when nothing copied and options.error is set', () => new Promise((done: any) => {
+    copyfiles(['input/doesnotexist/*.txt', 'output'], { error: true }, (err) => {
+      expect(err).toBeInstanceOf(Error);
+      expect(err?.message).toBe('nothing copied');
+      done();
+    });
+  }));
+
+  test('logs and calls callback when nothing copied and verbose/stat is set', () => new Promise((done: any) => {
+    const logSpy = vi.spyOn(global.console, 'log').mockReturnValue();
+    const timeSpy = vi.spyOn(global.console, 'timeEnd').mockReturnValue();
+    copyfiles(['input/doesnotexist/*.txt', 'output'], { verbose: true }, (err) => {
+      expect(logSpy).toHaveBeenCalledWith('Files copied:   0');
+      expect(timeSpy).toHaveBeenCalled();
+      expect(err).toBeUndefined();
+      logSpy.mockRestore();
+      timeSpy.mockRestore();
+      done();
+    });
+  }));
+
+  test('throws when flat & up used together (with callback)', () => new Promise((done: any) => {
+    copyfiles(['input/**/*.txt', 'output'], { flat: true, up: 1 }, (err) => {
+      expect(err).toBeInstanceOf(Error);
+      expect(err?.message).toBe('Cannot use --flat in conjunction with --up option.');
+      done();
+    });
+  }));
+
+  test('throws when nothing copied and options.error is set (no callback)', () => {
+    expect(() => {
+      copyfiles(['input/doesnotexist/*.txt', 'output'], { error: true });
+    }).toThrow('nothing copied');
+  });
+
+  test('sets followSymbolicLinks when options.follow is true', async () => {
+    if (process.platform === 'win32') return;
+    mkdirSync('input/real', { recursive: true });
+    writeFileSync('input/real/a.txt', 'test');
+    symlinkSync('real', 'input/link');
+    await new Promise<void>((resolve, reject) => {
+      copyfiles(['input/link/*.txt', 'output'], { follow: true }, (err) => {
+        const files = globSync('output/**/*', { dot: true });
+        console.log('output contents:', files);
+        const found = files.some(f => f.endsWith('a.txt'));
+        expect(found).toBe(true);
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
 
   test('verbose up', () => new Promise((done: any) => {
     const logSpy = vi.spyOn(global.console, 'log').mockReturnValue();

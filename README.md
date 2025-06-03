@@ -3,7 +3,6 @@
 [![Vitest](https://img.shields.io/badge/tested%20with-vitest-fcc72b.svg?logo=vitest)](https://vitest.dev/)
 [![codecov](https://codecov.io/gh/ghiscoding/native-copyfiles/branch/main/graph/badge.svg)](https://codecov.io/gh/ghiscoding/native-copyfiles)
 [![npm](https://img.shields.io/npm/v/native-copyfiles.svg)](https://www.npmjs.com/package/native-copyfiles)
-<!-- [![npm](https://img.shields.io/npm/dy/native-copyfiles)](https://www.npmjs.com/package/native-copyfiles) -->
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/native-copyfiles?color=success&label=gzip)](https://bundlephobia.com/result?p=native-copyfiles)
 
 ## Copyfiles
@@ -120,7 +119,6 @@ and finally the third and last argument is a callback function which is executed
 {
 	verbose: bool,    // enable debug messages
 	up: number,       // -u value
-	soft: bool,	  // soft copy (skip existing dirs & files)
 	exclude: string,  // exclude pattern
 	all: bool,	  // include dot files
 	follow: bool,	  // Follow symlinked directories when expanding ** patterns

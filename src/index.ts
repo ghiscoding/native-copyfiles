@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'node:fs';
 import path, { basename, dirname, join, normalize, posix, sep } from 'node:path';
 import untildify from 'untildify';
 import { type GlobOptions, globSync } from 'tinyglobby';
@@ -16,6 +16,17 @@ export function createDir(dir: string) {
 }
 
 /**
+ * Helper to throw or callback with error
+ */
+function throwOrCallback(err: Error, cb?: (e?: Error) => void) {
+  if (typeof cb === 'function') {
+    cb(err);
+  } else {
+    throw err;
+  }
+}
+
+/**
  * Copy the files per a glob pattern, the first item(s) can be a 1 or more files to copy
  * while the last item in the array is the output outDirectory directory
  * @param {String[]} paths - includes both source(s) and outDirectory directory
@@ -25,105 +36,146 @@ export function createDir(dir: string) {
 export function copyfiles(paths: string[], options: CopyFileOptions, callback?: (e?: Error) => void) {
   const cb = callback || options.callback;
 
-  try {
+  if (options.verbose || options.stat) {
+    console.time('Execution time');
+  }
+
+  if (paths.length < 2) {
+    throwOrCallback(
+      new Error('Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"'),
+      cb
+    );
+    return;
+  }
+
+  if (options.flat && options.up) {
+    throwOrCallback(
+      new Error('Cannot use --flat in conjunction with --up option.'),
+      cb
+    );
+    return;
+  }
+
+  // find file source(s) and destination directory
+  const sources = paths.slice(0, -1);
+  let outDir = paths.pop() as string;
+  outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
+
+  // create destination directory if not exists
+  createDir(outDir);
+
+  let globOptions: GlobOptions = {};
+  if (Array.isArray(options.exclude) && options.exclude.length > 0) {
+    globOptions.ignore = options.exclude;
+  }
+  if (options.all) {
+    globOptions.dot = true;
+  }
+  if (options.follow) {
+    globOptions.followSymbolicLinks = true;
+  }
+
+  // find all files by using our source glob pattern(s)
+  const allFiles = globSync(sources, globOptions);
+  if (options.verbose) {
+    console.log('glob found', allFiles);
+  }
+
+  if (options.error && allFiles.length < 1) {
+    const err = new Error('nothing copied');
+    if (typeof cb === 'function') cb(err);
+    else throw err;
+    return;
+  }
+
+  let completed = 0;
+  let hasError = false;
+
+  if (allFiles.length === 0) {
     if (options.verbose || options.stat) {
-      console.time('Execution time');
-    }
-
-    if (paths.length < 2) {
-      throw new Error('Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"');
-    }
-
-    if (options.flat && options.up) {
-      throw new Error('Cannot use --flat in conjunction with --up option.');
-    }
-
-    // find file source(s) and destination directory
-    const sources = paths.slice(0, -1);
-    let outDir = paths.pop() as string;
-    outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
-
-    // create destination directory if not exists
-    createDir(outDir);
-
-    let globOptions: GlobOptions = {};
-    if (Array.isArray(options.exclude) && options.exclude.length > 0) {
-      globOptions.ignore = options.exclude;
-    }
-    if (options.all) {
-      globOptions.dot = true;
-    }
-    if (options.follow) {
-      globOptions.followSymbolicLinks = true;
-    }
-
-    // find all files by using our source glob pattern(s)
-    const allFiles = globSync(sources, globOptions);
-    if (options.verbose) {
-      console.log('glob found', allFiles);
-    }
-
-    allFiles.forEach((inFile) => {
-      copyFile(inFile, outDir, options);
-    });
-
-    if (options.verbose || options.stat) {
-      console.log(`Files copied:   ${allFiles.length}`);
+      console.log(`Files copied:   0`);
       console.timeEnd('Execution time');
     }
-
-    if (options.error && allFiles.length < 1) {
-      throw new Error('nothing copied');
-    }
-
-    if (typeof cb === 'function') {
-      cb();
-    }
-  } catch (e: any) {
-    if (typeof cb === 'function') {
-      cb(e);
-    }
+    if (typeof cb === 'function') cb();
+    return;
   }
+
+  allFiles.forEach((inFile) => {
+    copyFileStream(inFile, outDir, options, (err) => {
+      if (hasError) return;
+      if (err) {
+        hasError = true;
+        if (typeof cb === 'function') cb(err);
+        return;
+      }
+      completed++;
+      if (completed === allFiles.length) {
+        if (options.verbose || options.stat) {
+          console.log(`Files copied:   ${allFiles.length}`);
+          console.timeEnd('Execution time');
+        }
+        if (typeof cb === 'function') cb();
+      }
+    });
+  });
 }
 
 /**
- * Copy a single file from a source to a destination directory
+ * Copy a single file from a source to a destination directory using streams
  * @param {String} inFile
  * @param {String} outDir
  * @param {CopyFileOptions} options
+ * @param {(e?: Error) => void} cb
  */
-function copyFile(inFile: string, outDir: string, options: CopyFileOptions) {
+function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions, cb: (e?: Error) => void) {
   const fileDir = dirname(inFile);
   const fileName = basename(inFile);
   outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
 
-  // a flat output will copy all files to the destination directory directory without any sub-directory
+  let dest: string;
   if (options.flat || options.up === true) {
-    const dest = join(outDir, fileName);
-
-    if (options.verbose) {
-      console.log('copy:', { from: convertToPosix(inFile), to: convertToPosix(dest) });
-    }
-    copyFileSync(inFile, dest);
-  }
-  // otherwise copy all the files with the full path (outDir path + source path)
-  else {
+    dest = join(outDir, fileName);
+  } else {
     const upCount = options.up || 0;
-    const destDir = join(outDir, dealWith(fileDir, upCount));
-
-    // make sure directory exists
-    createDir(destDir);
-
-    // finally copy the file
-    const dest = join(destDir, fileName);
-    if (options.verbose) {
-      console.log('copy:', { from: convertToPosix(inFile), to: convertToPosix(dest) });
+    let destDir: string;
+    try {
+      destDir = join(outDir, dealWith(fileDir, upCount));
+    } catch (err) {
+      cb(err as Error);
+      return;
     }
-    copyFileSync(inFile, dest);
+    createDir(destDir);
+    dest = join(destDir, fileName);
   }
 
-  function convertToPosix(path: string) {
-    return path.replaceAll(sep, posix.sep);
+  if (options.verbose) {
+    console.log('copy:', { from: convertToPosix(inFile), to: convertToPosix(dest) });
+  }
+
+  const readStream = createReadStream(inFile);
+  const writeStream = createWriteStream(dest);
+
+  let called = false;
+  function onceCallback(err?: Error) {
+    if (!called) {
+      called = true;
+      cb(err);
+    }
+  }
+
+  readStream.on('error', onceCallback);
+  writeStream.on('error', onceCallback);
+  writeStream.on('close', () => {
+    // Only call callback if not already called by an error
+    if (!called) {
+      onceCallback();
+    }
+  });
+
+  readStream.pipe(writeStream);
+
+  function convertToPosix(pathStr: string) {
+    return pathStr.replaceAll(sep, posix.sep);
   }
 
   function depth(str: string) {
