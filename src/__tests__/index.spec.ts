@@ -1,4 +1,4 @@
-import { lstatSync, mkdirSync, readdir, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdir, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { globSync } from 'tinyglobby';
 import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -63,7 +63,6 @@ describe('copyfiles', () => {
     writeFileSync('input/b.txt', 'b');
     writeFileSync('input/c.js', 'c');
     copyfiles(['input/*.txt', 'output'], {}, (err) => {
-      console.error(err, 'copyfiles');
       readdir('output/input', async (err, files) => {
         expect(files).toEqual(['a.txt', 'b.txt']);
         done();
@@ -78,7 +77,6 @@ describe('copyfiles', () => {
     writeFileSync('input/b.txt', 'b');
     writeFileSync('input/c.js', 'c');
     copyfiles(['input/*.txt', 'output'], {}, (err) => {
-      console.error(err, 'copyfiles');
       readdir('output/input', (err, files) => {
         expect(files).toEqual(['a.txt', 'b.txt']);
         //  'correct mode'

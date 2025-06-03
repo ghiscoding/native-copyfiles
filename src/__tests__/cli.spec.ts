@@ -1,12 +1,12 @@
-import { readdir, rmdirSync, writeFileSync } from 'node:fs';
+import { readdir, rmSync, writeFileSync } from 'node:fs';
 import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { createDir } from '../index';
 
 async function cleanupFolders() {
   try {
-    rmdirSync('input2', { recursive: true });
-    rmdirSync('output2', { recursive: true });
+    rmSync('input2', { recursive: true, force: true });
+    rmSync('output2', { recursive: true, force: true });
   } catch (e) { }
 }
 
