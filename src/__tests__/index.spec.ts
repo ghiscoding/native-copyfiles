@@ -286,15 +286,13 @@ describe('copyfiles', () => {
   });
 
   test('sets followSymbolicLinks when options.follow is true', () => new Promise((done: any) => {
-    if (process.platform === 'win32') return done(); // skip on Windows
+    if (process.platform === 'win32') return done();
     mkdirSync('input/real', { recursive: true });
     writeFileSync('input/real/a.txt', 'test');
     symlinkSync('real', 'input/link');
     copyfiles(['input/link/*.txt', 'output'], { follow: true }, (err) => {
+      console.log('output contents:', globSync('output/**/*', { dot: true }));
       expect(err).toBeUndefined();
-      // The copied file should be at output/a.txt (not output/link/a.txt) if your copy logic flattens symlinks
-      // Or at output/link/a.txt if it preserves the symlink structure
-      // Adjust this check to match your implementation:
       expect(existsSync('output/link/a.txt') || existsSync('output/a.txt')).toBe(true);
       done();
     });
