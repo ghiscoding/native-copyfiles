@@ -285,19 +285,20 @@ describe('copyfiles', () => {
     }).toThrow('nothing copied');
   });
 
-  test('sets followSymbolicLinks when options.follow is true', (done: any) => {
-    if (process.platform === 'win32') return done();
+  test('sets followSymbolicLinks when options.follow is true', async () => {
+    if (process.platform === 'win32') return;
     mkdirSync('input/real', { recursive: true });
     writeFileSync('input/real/a.txt', 'test');
     symlinkSync('real', 'input/link');
-    // Check if symlink was created as a directory symlink
-    if (!lstatSync('input/link').isSymbolicLink()) return done();
-    copyfiles(['input/link/*.txt', 'output'], { follow: true }, (err) => {
-      const files = globSync('output/**/*', { dot: true });
-      console.log('output contents:', files);
-      const found = files.some(f => f.endsWith('a.txt'));
-      expect(found).toBe(true);
-      done();
+    await new Promise<void>((resolve, reject) => {
+      copyfiles(['input/link/*.txt', 'output'], { follow: true }, (err) => {
+        const files = globSync('output/**/*', { dot: true });
+        console.log('output contents:', files);
+        const found = files.some(f => f.endsWith('a.txt'));
+        expect(found).toBe(true);
+        if (err) reject(err);
+        else resolve();
+      });
     });
   });
 
