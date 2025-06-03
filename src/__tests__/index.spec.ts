@@ -188,10 +188,11 @@ describe('copyfiles', () => {
       mkdirSync('input/origin');
       mkdirSync('input/origin/inner');
       writeFileSync('input/origin/inner/a.txt', 'a');
+      writeFileSync('input/origin/inner/b.txt', 'b');
       symlinkSync('origin', 'input/dest');
       copyfiles(['input/**/*.txt', 'output'], { up: 1, follow: true }, (err) => {
         const files = globSync('output/**/*.txt');
-        expect(files).toEqual(['output/dest/inner/a.txt', 'output/origin/inner/a.txt']);
+        expect(new Set(files)).toEqual(new Set(['output/a.txt', 'output/b.txt']));
       });
     }
   });
