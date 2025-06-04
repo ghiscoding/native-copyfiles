@@ -317,4 +317,34 @@ describe('copyfiles', () => {
       });
     });
   }));
+
+  test('copies and renames a single file when destination is a file path', () => new Promise((done: any) => {
+    writeFileSync('input/.env.production', 'SOME=VALUE');
+    copyfiles(['input/.env.production', 'output/.env'], {}, (err) => {
+      expect(err).toBeUndefined();
+      readdir('output', (err, files) => {
+        expect(files).toContain('.env');
+        // Check file contents
+        const { readFileSync } = require('node:fs');
+        const content = readFileSync('output/.env', 'utf8');
+        expect(content).toBe('SOME=VALUE');
+        done();
+      });
+    });
+  }));
+
+  test('copies and renames a single file to a new filename (no dot)', () => new Promise((done: any) => {
+    writeFileSync('input/original.txt', 'HELLO WORLD');
+    copyfiles(['input/original.txt', 'output/renamed.txt'], {}, (err) => {
+      expect(err).toBeUndefined();
+      readdir('output', (err, files) => {
+        expect(files).toContain('renamed.txt');
+        // Check file contents
+        const { readFileSync } = require('node:fs');
+        const content = readFileSync('output/renamed.txt', 'utf8');
+        expect(content).toBe('HELLO WORLD');
+        done();
+      });
+    });
+  }));
 });

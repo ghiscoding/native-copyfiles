@@ -58,11 +58,25 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
 
   // find file source(s) and destination directory
   const sources = paths.slice(0, -1);
-  let outDir = paths.pop() as string;
-  outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
+  let outPath = paths.pop() as string;
+  outPath = outPath.startsWith('~') ? untildify(outPath) : outPath;
 
-  // create destination directory if not exists
-  createDir(outDir);
+  // Special case: single file to file (rename)
+  const isSingleFile = sources.length === 1 && !sources[0].includes('*');
+  let isDestFile = false;
+  if (isSingleFile) {
+    try {
+      const stat = existsSync(outPath) ? require('node:fs').statSync(outPath) : null;
+      isDestFile = !stat || !stat.isDirectory();
+    } catch {
+      isDestFile = true;
+    }
+  }
+
+  if (!isDestFile) {
+    // create destination directory if not exists
+    createDir(outPath);
+  }
 
   let globOptions: GlobOptions = {};
   if (Array.isArray(options.exclude) && options.exclude.length > 0) {
@@ -101,22 +115,28 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
   }
 
   allFiles.forEach((inFile) => {
-    copyFileStream(inFile, outDir, options, (err) => {
-      if (hasError) return;
-      if (err) {
-        hasError = true;
-        if (typeof cb === 'function') cb(err);
-        return;
-      }
-      completed++;
-      if (completed === allFiles.length) {
-        if (options.verbose || options.stat) {
-          console.log(`Files copied:   ${allFiles.length}`);
-          console.timeEnd('Execution time');
+    copyFileStream(
+      inFile,
+      outPath,
+      options,
+      (err) => {
+        if (hasError) return;
+        if (err) {
+          hasError = true;
+          if (typeof cb === 'function') cb(err);
+          return;
         }
-        if (typeof cb === 'function') cb();
-      }
-    });
+        completed++;
+        if (completed === allFiles.length) {
+          if (options.verbose || options.stat) {
+            console.log(`Files copied:   ${allFiles.length}`);
+            console.timeEnd('Execution time');
+          }
+          if (typeof cb === 'function') cb();
+        }
+      },
+      isSingleFile && isDestFile // pass as "rename" mode
+    );
   });
 }
 
@@ -127,13 +147,22 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
  * @param {CopyFileOptions} options
  * @param {(e?: Error) => void} cb
  */
-function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions, cb: (e?: Error) => void) {
+function copyFileStream(
+  inFile: string,
+  outDir: string,
+  options: CopyFileOptions,
+  cb: (e?: Error) => void,
+  renameMode = false
+) {
   const fileDir = dirname(inFile);
   const fileName = basename(inFile);
   outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
 
   let dest: string;
-  if (options.flat || options.up === true) {
+  if (renameMode) {
+    dest = outDir;
+    createDir(path.dirname(dest));
+  } else if (options.flat || options.up === true) {
     dest = join(outDir, fileName);
   } else {
     const upCount = options.up || 0;
@@ -166,7 +195,7 @@ function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions
   readStream.on('error', onceCallback);
   writeStream.on('error', onceCallback);
   writeStream.on('close', () => {
-    // Only call callback if not already called by an error
+    // Only execute callback if not already called by an error
     if (!called) {
       onceCallback();
     }

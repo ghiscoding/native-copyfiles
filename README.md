@@ -105,6 +105,23 @@ Other options include
 - `-a` or `--all` which includes files that start with a dot.
 - `-F` or `--follow` which follows symbolic links
 
+### Copy and Rename a Single File
+
+You can copy and rename a single file by specifying the source file and the destination filename (not just a directory). For example, to copy `input/.env_publish` to `output/.env`:
+
+```bash
+copyfiles input/.env_publish output/.env
+```
+
+This will copy and rename the file in one step.  
+You can use this for any filename, not just files starting with a dot:
+
+```bash
+copyfiles input/original.txt output/renamed.txt
+```
+
+If the destination path is a directory, the file will be copied into that directory as usual. If the destination path is a filename, the file will be copied and renamed.
+
 ### JavaScript API
 
 ```js
