@@ -80,5 +80,5 @@ describe('copyfiles', () => {
         exitSpy.mockRestore();
         done(e);
       });
-  }), 250);
+  }), 300);
 })

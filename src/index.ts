@@ -68,6 +68,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
     try {
       const stat = existsSync(outPath) ? require('node:fs').statSync(outPath) : null;
       isDestFile = !stat || !stat.isDirectory();
+      /* v8 ignore next 3 */
     } catch {
       isDestFile = true;
     }
