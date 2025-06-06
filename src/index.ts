@@ -63,15 +63,10 @@ function getDestinationPath(
       destFileName += extname(outDir) || srcExt;
     }
     let dest: string;
-    if (options.flat) {
+    if (options.flat || upCount === true) {
       dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), path.basename(destFileName));
-    } else if (upCount && upCount !== true) {
+    } else if (upCount) {
       const upPath = dealWith(fileDir, upCount);
-      dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), upPath, path.basename(destFileName));
-    } else if (upCount === true) {
-      // Remove the first directory from fileDir (i.e., 'input')
-      const parts = fileDir.split(path.sep).filter(Boolean);
-      const upPath = parts.length > 1 ? parts.slice(1).join(path.sep) : '';
       dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), upPath, path.basename(destFileName));
     } else {
       dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), fileDir, path.basename(destFileName));
