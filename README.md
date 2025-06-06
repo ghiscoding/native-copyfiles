@@ -202,6 +202,6 @@ and finally the third and last argument is a callback function which is executed
     all: bool,	        // include dot files
     follow: bool,       // follow symlinked directories when expanding ** patterns
     error: bool         // raise errors if no files copied
-    rename?: (src, dest) => string;  // callback to transform the destination filename(s)
+    rename: (src, dest) => string;  // callback to transform the destination filename(s)
 }
 ```
