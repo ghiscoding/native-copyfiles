@@ -193,12 +193,12 @@ and finally the third and last argument is a callback function which is executed
 
 ```js
 {
-	verbose: bool,    // enable debug messages
-	up: number,       // -u value
-	exclude: string,  // exclude pattern
-	all: bool,	  // include dot files
-	follow: bool,	  // follow symlinked directories when expanding ** patterns
-	error: bool       // raise errors if no files copied
-  rename?: (src: string, dest: string) => string;  // callback to transform the destination filename(s)
+  verbose: bool,    // enable debug messages
+  up: number,       // -u value
+  exclude: string,  // exclude pattern
+  all: bool,	  // include dot files
+  follow: bool,	  // follow symlinked directories when expanding ** patterns
+  error: bool       // raise errors if no files copied
+	rename?: (src: string, dest: string) => string;  // callback to transform the destination filename(s)
 }
 ```
