@@ -44,7 +44,7 @@ function getDestinationPath(
 ): string {
   const fileDir = dirname(inFile);
   const fileName = basename(inFile);
-  const srcExt = path.extname(fileName);
+  const srcExt = extname(fileName);
   const srcBase = fileName && srcExt ? fileName.slice(0, -srcExt.length) : fileName;
   const upCount = options.up || 0;
 
@@ -67,12 +67,12 @@ function getDestinationPath(
     const baseOutDir = outDir.replace(/[*][^\\\/]*$/, '');
     let dest: string;
     if (options.flat || upCount === true) {
-      dest = path.join(baseOutDir, path.basename(finalDestFileName));
+      dest = join(baseOutDir, basename(finalDestFileName));
     } else if (upCount) {
       const upPath = dealWith(fileDir, upCount);
-      dest = path.join(baseOutDir, upPath, path.basename(finalDestFileName));
+      dest = join(baseOutDir, upPath, basename(finalDestFileName));
     } else {
-      dest = path.join(baseOutDir, fileDir, path.basename(finalDestFileName));
+      dest = join(baseOutDir, fileDir, basename(finalDestFileName));
     }
     return callRenameWhenDefined(inFile, dest, options);
   }
@@ -201,12 +201,10 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
             console.log(`Files copied:   ${allFiles.length}`);
             console.timeEnd('Execution time');
           }
-          if (typeof cb === 'function') {
-            cb();
-          }
+          if (typeof cb === 'function') cb();
         }
       },
-      isSingleFile && isDestFile
+      isSingleFile && isDestFile // pass as single rename mode
     );
   });
 }
@@ -254,6 +252,7 @@ function copyFileStream(
   readStream.on('error', onceCallback);
   writeStream.on('error', onceCallback);
   writeStream.on('close', () => {
+    // Only execute callback if not already called by an error
     if (!called) {
       onceCallback();
     }
