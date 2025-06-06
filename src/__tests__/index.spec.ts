@@ -415,6 +415,7 @@ describe('copyfiles', () => {
   test('copies and renames files, using --up:1 option, from subfolders using wildcard in destination with .scss extension', () => new Promise((done: any) => {
     // Setup: create input files in subfolders
     createDir('input/sub1');
+    createDir('input/sub2');
     createDir('input/sub2/deep1');
     writeFileSync('input/root.css', '.root { color: black }');
     writeFileSync('input/sub1/input1.css', 'h1 { color: red }');
