@@ -1,5 +1,5 @@
-import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'node:fs';
-import path, { basename, dirname, join, normalize, posix, sep } from 'node:path';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, statSync } from 'node:fs';
+import path, { basename, dirname, extname, join, normalize, posix, sep } from 'node:path';
 import untildify from 'untildify';
 import { type GlobOptions, globSync } from 'tinyglobby';
 
@@ -24,6 +24,74 @@ function throwOrCallback(err: Error, cb?: (e?: Error) => void) {
   } else {
     throw err;
   }
+}
+
+/**
+ * Calculate the destination path for a given input file and options.
+ */
+function getDestinationPath(
+  inFile: string,
+  outDir: string,
+  options: CopyFileOptions,
+  isSingleFileRename = false
+): string {
+  const fileDir = dirname(inFile);
+  const fileName = basename(inFile);
+  const srcExt = extname(fileName);
+  const srcBase = fileName.slice(0, -srcExt.length);
+  const upCount = options.up || 0;
+
+  // 1. Single file rename (no glob, dest is not a directory, no *)
+  if (isSingleFileRename && !outDir.includes('*')) {
+    let dest = outDir;
+    // Only add extension if dest has no extension at all
+    if (!extname(dest) && !isSingleFileRename) {
+      dest += srcExt;
+    }
+    if (typeof options.rename === 'function') {
+      dest = options.rename(inFile, dest);
+    }
+    return dest;
+  }
+
+  // 2. Wildcard pattern in destination
+  if (outDir.includes('*')) {
+    // Replace * with base name (without extension)
+    let destFileName = outDir.replace('*', srcBase);
+    // If the pattern after replacement has no extension, add the extension from the pattern or the source
+    if (!extname(destFileName)) {
+      destFileName += extname(outDir) || srcExt;
+    }
+    let dest: string;
+    if (options.flat) {
+      dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), path.basename(destFileName));
+    } else if (upCount && upCount !== true) {
+      const upPath = dealWith(fileDir, upCount);
+      dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), upPath, path.basename(destFileName));
+    } else if (upCount === true) {
+      // Remove the first directory from fileDir (i.e., 'input')
+      const parts = fileDir.split(path.sep).filter(Boolean);
+      const upPath = parts.length > 1 ? parts.slice(1).join(path.sep) : '';
+      dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), upPath, path.basename(destFileName));
+    } else {
+      dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), fileDir, path.basename(destFileName));
+    }
+    return dest;
+  }
+
+  // 3. Flat or up logic (no wildcard)
+  let baseDir: string;
+  if (options.flat || upCount === true) {
+    baseDir = outDir;
+  } else {
+    baseDir = join(outDir, dealWith(fileDir, upCount));
+  }
+  let dest = join(baseDir, fileName);
+
+  if (typeof options.rename === 'function') {
+    dest = options.rename(inFile, dest);
+  }
+  return dest;
 }
 
 /**
@@ -61,13 +129,18 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
   let outPath = paths.pop() as string;
   outPath = outPath.startsWith('~') ? untildify(outPath) : outPath;
 
-  // Special case: single file to file (rename)
+  // Detect single file rename (no glob, dest is not a directory, no *)
   const isSingleFile = sources.length === 1 && !sources[0].includes('*');
   let isDestFile = false;
   if (isSingleFile) {
     try {
-      const stat = existsSync(outPath) ? require('node:fs').statSync(outPath) : null;
-      isDestFile = !stat || !stat.isDirectory();
+      // If the output path doesn't exist, treat as file if it has an extension or ends with a dotfile
+      if (!existsSync(outPath)) {
+        isDestFile = !!extname(outPath) || basename(outPath).startsWith('.');
+      } else {
+        const stat = statSync(outPath);
+        isDestFile = !stat.isDirectory();
+      }
       /* v8 ignore next 3 */
     } catch {
       isDestFile = true;
@@ -76,7 +149,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
 
   if (!isDestFile) {
     // create destination directory if not exists
-    createDir(outPath);
+    createDir(dirname(outPath));
   }
 
   let globOptions: GlobOptions = {};
@@ -133,10 +206,12 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
             console.log(`Files copied:   ${allFiles.length}`);
             console.timeEnd('Execution time');
           }
-          if (typeof cb === 'function') cb();
+          if (typeof cb === 'function') {
+            cb();
+          }
         }
       },
-      isSingleFile && isDestFile // pass as "rename" mode
+      isSingleFile && isDestFile
     );
   });
 }
@@ -153,30 +228,18 @@ function copyFileStream(
   outDir: string,
   options: CopyFileOptions,
   cb: (e?: Error) => void,
-  renameMode = false
+  isSingleFileRename = false
 ) {
-  const fileDir = dirname(inFile);
-  const fileName = basename(inFile);
   outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
-
   let dest: string;
-  if (renameMode) {
-    dest = outDir;
-    createDir(path.dirname(dest));
-  } else if (options.flat || options.up === true) {
-    dest = join(outDir, fileName);
-  } else {
-    const upCount = options.up || 0;
-    let destDir: string;
-    try {
-      destDir = join(outDir, dealWith(fileDir, upCount));
-    } catch (err) {
-      cb(err as Error);
-      return;
-    }
-    createDir(destDir);
-    dest = join(destDir, fileName);
+  try {
+    dest = getDestinationPath(inFile, outDir, options, isSingleFileRename);
+  } catch (err) {
+    cb(err as Error);
+    return;
   }
+
+  createDir(dirname(dest));
 
   if (options.verbose) {
     console.log('copy:', { from: convertToPosix(inFile), to: convertToPosix(dest) });
@@ -196,7 +259,6 @@ function copyFileStream(
   readStream.on('error', onceCallback);
   writeStream.on('error', onceCallback);
   writeStream.on('close', () => {
-    // Only execute callback if not already called by an error
     if (!called) {
       onceCallback();
     }
@@ -207,18 +269,18 @@ function copyFileStream(
   function convertToPosix(pathStr: string) {
     return pathStr.replaceAll(sep, posix.sep);
   }
+}
 
-  function depth(str: string) {
-    return normalize(str).split(sep).length;
-  }
+function depth(str: string) {
+  return normalize(str).split(sep).length;
+}
 
-  function dealWith(inPath: string, up: number) {
-    if (!up) {
-      return inPath;
-    }
-    if (depth(inPath) < up) {
-      throw new Error(`Can't go up ${up} levels from ${inPath} (${depth(inPath)} levels).`);
-    }
-    return path.join.apply(path, normalize(inPath).split(sep).slice(up));
+function dealWith(inPath: string, up: number) {
+  if (!up) {
+    return inPath;
   }
+  if (depth(inPath) < up) {
+    throw new Error(`Can't go up ${up} levels from ${inPath} (${depth(inPath)} levels).`);
+  }
+  return join.apply(path, normalize(inPath).split(sep).slice(up));
 }

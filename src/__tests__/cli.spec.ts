@@ -1,4 +1,4 @@
-import { existsSync, readdir, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readdir, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { createDir } from '../index';
@@ -62,17 +62,17 @@ describe('copyfiles', () => {
             setTimeout(check, 50);
             return;
           }
-          readdir('output2/input2', (err, files) => {
-            try {
-              expect(err).toBeNull();
+          try {
+            setTimeout(() => {
+              const files = readdirSync('output2/input2');
               expect(files).toEqual(['a.txt', 'b.txt']);
               exitSpy.mockRestore();
               done();
-            } catch (e) {
-              exitSpy.mockRestore();
-              done(e);
-            }
-          });
+            }, 50);
+          } catch (e) {
+            exitSpy.mockRestore();
+            done(e);
+          }
         };
         check();
       })

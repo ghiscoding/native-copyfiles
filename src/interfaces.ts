@@ -1,28 +1,34 @@
 export interface CopyFileOptions {
-  /** include files & directories begining with a dot (.) */
+  /** Include files & directories beginning with a dot (.) */
   all?: boolean;
 
-  /** throw error if nothing is copied */
+  /** Throw error if nothing is copied */
   error?: boolean;
 
-  /** pattern or glob to exclude (may be passed multiple times) */
+  /** Pattern or glob to exclude files (may be passed multiple times in the CLI) */
   exclude?: string | string[];
 
-  /** flatten the output */
+  /** Flatten the output */
   flat?: boolean;
 
-  /** follow symbolink links */
+  /** Follow symbolic link links */
   follow?: boolean;
 
-  /** show statistics after execution (execution time + file count) */
+  /** Show statistics after execution (execution time + file count) */
   stat?: boolean;
 
-  /** slice a path off the bottom of the paths */
+  /**
+   * Slice a path off the bottom of the paths.
+   * Note: when is assigned with `up: true`, it is equivalent to `flat: true`
+   */
   up?: boolean | number;
 
-  /** print more information to console */
+  /** Print files being copied to the console */
   verbose?: boolean;
 
-  /** callback to run when the execution finished or an error occured */
-  callback?: (e?: Error) => void
+  /** Callback to run when the execution finished or an error occured */
+  callback?: (e?: Error) => void;
+
+  /** Callback to transform the destination filename(s) */
+  rename?: (src: string, dest: string) => string;
 }

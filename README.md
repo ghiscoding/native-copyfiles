@@ -34,8 +34,8 @@ npm install native-copyfiles -D
     -E, --error    throw error if nothing is copied                          [boolean]
     -V, --verbose  print more information to console                         [boolean]
     -F, --follow   follow symbolic links                                     [boolean]
-    -v, --version  Show version number                                       [boolean]
-    -h, --help     Show help                                                 [boolean]
+    -v, --version  show version number                                       [boolean]
+    -h, --help     show help                                                 [boolean]
 ```
 
 > [!NOTE]
@@ -122,6 +122,63 @@ copyfiles input/original.txt output/renamed.txt
 
 If the destination path is a directory, the file will be copied into that directory as usual. If the destination path is a filename, the file will be copied and renamed.
 
+---
+
+### Rename Multiple Files During Copy
+
+#### 1. Rename Using Glob Patterns
+
+You can use a wildcard (`*`) in the destination to rename files dynamically. For example, to copy all `.css` files and change their extension to `.scss`:
+
+```bash
+copyfiles "input/**/*.css" "output/*.scss"
+```
+
+This will copy:
+
+- `input/foo.css` → `output/foo.scss`
+- `input/bar/baz.css` → `output/bar/baz.scss`
+
+The `*` in the destination is replaced with the base filename from the source.  
+You can combine this with `--flat` or `--up` to control the output structure.
+
+#### 2. Rename Using a Callback (JavaScript API)
+
+For advanced renaming, you can use the `rename` callback option in the API.  
+This function receives the source and destination path and should return the new destination path.
+
+**Example: Change extension to `.scss` using a callback**
+
+```js
+import { copyfiles } from 'native-copyfiles';
+
+copyfiles(['input/**/*.css', 'output'], {
+  flat: true,
+  rename: (src, dest) => dest.replace(/\.css$/, '.scss')
+}, (err) => {
+  // All files like input/foo.css → output/foo.scss
+});
+```
+
+**Example: Prefix all filenames with `renamed-` but keep the extension**
+
+```js
+copyfiles(['input/**/*.css', 'output'], {
+  up: 1,
+  rename: (src, dest) => dest.replace(/([^/\\]+)\.css$/, 'renamed-$1.css')
+}, (err) => {
+  // input/foo.css → output/renamed-foo.css
+  // input/bar/baz.css → output/bar/renamed-baz.css
+});
+```
+
+The `rename` callback gives you full control over the output filename and path.
+
+> **Tip:**  
+> You can use either the glob pattern approach or the `rename` callback, or even combine them for advanced scenarios!
+
+---
+
 ### JavaScript API
 
 ```js
@@ -140,7 +197,8 @@ and finally the third and last argument is a callback function which is executed
 	up: number,       // -u value
 	exclude: string,  // exclude pattern
 	all: bool,	  // include dot files
-	follow: bool,	  // Follow symlinked directories when expanding ** patterns
+	follow: bool,	  // follow symlinked directories when expanding ** patterns
 	error: bool       // raise errors if no files copied
+  rename?: (src: string, dest: string) => string;  // callback to transform the destination filename(s)
 }
 ```
