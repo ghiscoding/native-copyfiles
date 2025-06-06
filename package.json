@@ -35,7 +35,12 @@
     "url": "https://github.com/ghiscoding/native-copyfiles/issues"
   },
   "scripts": {
+    "prebuild": "npm run biome:lint:write && npm run biome:format:write",
     "build": "tsc --outDir dist",
+    "biome:lint:check": "biome lint ./src",
+    "biome:lint:write": "biome lint --write ./src",
+    "biome:format:check": "biome format ./src",
+    "biome:format:write": "biome format --write ./src",
     "preview:copy": "node dist/cli.js test-copyin test-copyout --flat --verbose",
     "preview:release": "release-it --only-version --dry-run",
     "release": "release-it --only-version",
@@ -48,6 +53,7 @@
     "yargs": "^18.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.0.0-beta.6",
     "@release-it/conventional-changelog": "^10.0.1",
     "@types/node": "^22.15.30",
     "@types/yargs": "^17.0.33",

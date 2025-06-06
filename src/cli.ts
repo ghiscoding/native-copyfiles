@@ -3,7 +3,7 @@
 import yargs from 'yargs/yargs';
 
 import { copyfiles } from './index.js';
-import { type CopyFileOptions } from './interfaces.js';
+import type { CopyFileOptions } from './interfaces.js';
 
 const cli = yargs(process.argv.slice(2));
 const argv = cli
@@ -61,7 +61,7 @@ const argv = cli
   .version('0.1.6')
   .parse();
 
-copyfiles((argv as any)._ as string[], argv as CopyFileOptions, function (err) {
+copyfiles((argv as any)._ as string[], argv as CopyFileOptions, err => {
   if (err) {
     console.error(err);
     process.exit(1);

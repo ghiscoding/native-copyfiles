@@ -3,7 +3,7 @@ import { basename, dirname, extname, join, normalize, posix, sep } from 'node:pa
 import untildify from 'untildify';
 import { type GlobOptions, globSync } from 'tinyglobby';
 
-import { CopyFileOptions } from './interfaces.js';
+import type { CopyFileOptions } from './interfaces.js';
 
 /**
  * Check if a directory exists, if not then create it
@@ -36,12 +36,7 @@ function callRenameWhenDefined(inFile: string, dest: string, options: CopyFileOp
 /**
  * Calculate the destination path for a given input file and options.
  */
-function getDestinationPath(
-  inFile: string,
-  outDir: string,
-  options: CopyFileOptions,
-  isSingleFileRename = false
-): string {
+function getDestinationPath(inFile: string, outDir: string, options: CopyFileOptions, isSingleFileRename = false): string {
   const fileDir = dirname(inFile);
   const fileName = basename(inFile);
   const srcExt = extname(fileName);
@@ -50,7 +45,7 @@ function getDestinationPath(
 
   // 1. Single file rename (no glob, dest is not a directory, no *)
   if (isSingleFileRename && !outDir.includes('*')) {
-    let dest = outDir;
+    const dest = outDir;
     return callRenameWhenDefined(inFile, dest, options);
   }
 
@@ -64,7 +59,7 @@ function getDestinationPath(
       finalDestFileName += extname(outDir) || srcExt;
     }
 
-    const baseOutDir = outDir.replace(/[*][^\\\/]*$/, '');
+    const baseOutDir = outDir.replace(/[*][^\\/]*$/, '');
     let dest: string;
     if (options.flat || upCount === true) {
       dest = join(baseOutDir, basename(finalDestFileName));
@@ -84,7 +79,7 @@ function getDestinationPath(
   } else {
     baseDir = join(outDir, dealWith(fileDir, upCount));
   }
-  let dest = join(baseDir, fileName);
+  const dest = join(baseDir, fileName);
 
   return callRenameWhenDefined(inFile, dest, options);
 }
@@ -106,16 +101,13 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
   if (paths.length < 2) {
     throwOrCallback(
       new Error('Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"'),
-      cb
+      cb,
     );
     return;
   }
 
   if (options.flat && options.up) {
-    throwOrCallback(
-      new Error('Cannot use --flat in conjunction with --up option.'),
-      cb
-    );
+    throwOrCallback(new Error('Cannot use --flat in conjunction with --up option.'), cb);
     return;
   }
 
@@ -147,7 +139,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
     createDir(dirname(outPath));
   }
 
-  let globOptions: GlobOptions = {};
+  const globOptions: GlobOptions = {};
   if (Array.isArray(options.exclude) && options.exclude.length > 0) {
     globOptions.ignore = options.exclude;
   }
@@ -183,12 +175,12 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
     return;
   }
 
-  allFiles.forEach((inFile) => {
+  allFiles.forEach(inFile => {
     copyFileStream(
       inFile,
       outPath,
       options,
-      (err) => {
+      err => {
         if (hasError) return;
         if (err) {
           hasError = true;
@@ -204,7 +196,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
           if (typeof cb === 'function') cb();
         }
       },
-      isSingleFile && isDestFile // pass as single rename mode
+      isSingleFile && isDestFile, // pass as single rename mode
     );
   });
 }
@@ -216,13 +208,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
  * @param {CopyFileOptions} options
  * @param {(e?: Error) => void} cb
  */
-function copyFileStream(
-  inFile: string,
-  outDir: string,
-  options: CopyFileOptions,
-  cb: (e?: Error) => void,
-  isSingleFileRename = false
-) {
+function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions, cb: (e?: Error) => void, isSingleFileRename = false) {
   outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
   let dest: string;
   try {
