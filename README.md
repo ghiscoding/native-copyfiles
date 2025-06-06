@@ -177,6 +177,9 @@ The `rename` callback gives you full control over the output filename and path.
 > **Tip:**  
 > You can use either the glob pattern approach or the `rename` callback, or even combine them for advanced scenarios!
 
+> [!NOTE]
+> If you use both a destination glob pattern (e.g. `output/*.ext`) and a `rename` callback, the glob pattern is applied first and then the `rename` callback is executed last on the computed destination path. This allows you to combine both features for advanced renaming scenarios.
+
 ---
 
 ### JavaScript API

@@ -26,6 +26,13 @@ function throwOrCallback(err: Error, cb?: (e?: Error) => void) {
   }
 }
 
+function callRenameWhenDefined(inFile: string, dest: string, options: CopyFileOptions): string {
+  if (typeof options.rename === 'function') {
+    return options.rename(inFile, dest);
+  }
+  return dest;
+}
+
 /**
  * Calculate the destination path for a given input file and options.
  */
@@ -37,41 +44,37 @@ function getDestinationPath(
 ): string {
   const fileDir = dirname(inFile);
   const fileName = basename(inFile);
-  const srcExt = extname(fileName);
-  const srcBase = fileName.slice(0, -srcExt.length);
+  const srcExt = path.extname(fileName);
+  const srcBase = fileName && srcExt ? fileName.slice(0, -srcExt.length) : fileName;
   const upCount = options.up || 0;
 
   // 1. Single file rename (no glob, dest is not a directory, no *)
   if (isSingleFileRename && !outDir.includes('*')) {
     let dest = outDir;
-    // Only add extension if dest has no extension at all
-    if (!extname(dest) && !isSingleFileRename) {
-      dest += srcExt;
-    }
-    if (typeof options.rename === 'function') {
-      dest = options.rename(inFile, dest);
-    }
-    return dest;
+    return callRenameWhenDefined(inFile, dest, options);
   }
 
   // 2. Wildcard pattern in destination
   if (outDir.includes('*')) {
     // Replace * with base name (without extension)
-    let destFileName = outDir.replace('*', srcBase);
+    const destFileName = outDir.replace('*', srcBase);
     // If the pattern after replacement has no extension, add the extension from the pattern or the source
+    let finalDestFileName = destFileName;
     if (!extname(destFileName)) {
-      destFileName += extname(outDir) || srcExt;
+      finalDestFileName += extname(outDir) || srcExt;
     }
+
+    const baseOutDir = outDir.replace(/[*][^\\\/]*$/, '');
     let dest: string;
     if (options.flat || upCount === true) {
-      dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), path.basename(destFileName));
+      dest = path.join(baseOutDir, path.basename(finalDestFileName));
     } else if (upCount) {
       const upPath = dealWith(fileDir, upCount);
-      dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), upPath, path.basename(destFileName));
+      dest = path.join(baseOutDir, upPath, path.basename(finalDestFileName));
     } else {
-      dest = path.join(outDir.replace(/[*][^\\\/]*$/, ''), fileDir, path.basename(destFileName));
+      dest = path.join(baseOutDir, fileDir, path.basename(finalDestFileName));
     }
-    return dest;
+    return callRenameWhenDefined(inFile, dest, options);
   }
 
   // 3. Flat or up logic (no wildcard)
@@ -83,10 +86,7 @@ function getDestinationPath(
   }
   let dest = join(baseDir, fileName);
 
-  if (typeof options.rename === 'function') {
-    dest = options.rename(inFile, dest);
-  }
-  return dest;
+  return callRenameWhenDefined(inFile, dest, options);
 }
 
 /**

@@ -486,6 +486,118 @@ describe('copyfiles', () => {
     });
   }));
 
+  test('copies and renames files using both destination glob and rename callback', () => new Promise((done: any) => {
+    createDir('input/sub');
+    writeFileSync('input/foo.css', 'foo');
+    writeFileSync('input/sub/bar.css', 'bar');
+    copyfiles(['input/**/*.css', 'output/*.scss'], {
+      rename: (_src, dest) => dest.replace(/foo\.scss$/, 'baz.scss')
+    }, (err) => {
+      expect(err).toBeUndefined();
+      expect(readFileSync('output/input/baz.scss', 'utf8')).toBe('foo');
+      expect(readFileSync('output/input/sub/bar.scss', 'utf8')).toBe('bar');
+      done();
+    });
+  }));
+
+  test('copies and renames files, moving them to a subdirectory via rename callback', () => new Promise((done: any) => {
+    writeFileSync('input/a.txt', 'a');
+    writeFileSync('input/b.txt', 'b');
+    copyfiles(['input/*.txt', 'output'], {
+      rename: (_src, dest) => dest.replace('output', 'output/renamed')
+    }, (err) => {
+      expect(err).toBeUndefined();
+      expect(readFileSync('output/renamed/input/a.txt', 'utf8')).toBe('a');
+      expect(readFileSync('output/renamed/input/b.txt', 'utf8')).toBe('b');
+      done();
+    });
+  }));
+
+  test('copies files with rename callback that returns the same path', () => new Promise((done: any) => {
+    writeFileSync('input/a.txt', 'a');
+    copyfiles(['input/a.txt', 'output'], {
+      rename: (_src, dest) => dest
+    }, (err) => {
+      expect(err).toBeUndefined();
+      expect(readFileSync('output/input/a.txt', 'utf8')).toBe('a');
+      done();
+    });
+  }));
+
+  test('copies files and strips extension via rename callback', () => new Promise((done: any) => {
+    writeFileSync('input/a.txt', 'a');
+    copyfiles(['input/a.txt', 'output'], {
+      rename: (_src, dest) => dest.replace(/\.txt$/, '')
+    }, (err) => {
+      expect(err).toBeUndefined();
+      expect(readFileSync('output/input/a', 'utf8')).toBe('a');
+      done();
+    });
+  }));
+
+  test('calls callback with error if rename callback throws', () => new Promise((done: any) => {
+    writeFileSync('input/a.txt', 'a');
+    copyfiles(['input/a.txt', 'output'], {
+      rename: () => { throw new Error('rename failed'); }
+    }, (err) => {
+      expect(err).toBeInstanceOf(Error);
+      expect(err?.message).toBe('rename failed');
+      done();
+    });
+  }));
+
+  test('copies and renames files, using --up:true and destination glob, from nested folders', () => new Promise((done: any) => {
+    createDir('input/level1/level2');
+    writeFileSync('input/level1/level2/a.css', 'a');
+    copyfiles(['input/**/*.css', 'output/*.scss'], { up: true }, (err) => {
+      expect(err).toBeUndefined();
+      expect(readFileSync('output/a.scss', 'utf8')).toBe('a');
+      done();
+    });
+  }));
+
+  test('destination glob with source file with no extension', () => new Promise((done: any) => {
+    writeFileSync('input/file', 'abc');
+    copyfiles(['input/file', 'output/*.txt'], {}, (err) => {
+      expect(err).toBeUndefined();
+      expect(readFileSync('output/input/file.txt', 'utf8')).toBe('abc');
+      done();
+    });
+  }));
+
+  test('calls callback with error if rename callback throws (glob)', () => new Promise((done: any) => {
+    writeFileSync('input/a.txt', 'a');
+    copyfiles(['input/a.txt', 'output/*.txt'], {
+      rename: () => { throw new Error('rename failed glob'); }
+    }, (err) => {
+      expect(err).toBeInstanceOf(Error);
+      expect(err?.message).toBe('rename failed glob');
+      done();
+    });
+  }));
+
+  test('destination glob with source file and destination with no extension', () => new Promise((done: any) => {
+    writeFileSync('input/file', 'abc');
+    copyfiles(['input/file', 'output/*'], {}, (err) => {
+      expect(err).toBeUndefined();
+      expect(readFileSync('output/input/file', 'utf8')).toBe('abc');
+      done();
+    });
+  }));
+
+  test('throws when destination is missing (no callback)', () => {
+    expect(() => copyfiles(['input/a.txt'], {})).toThrow(
+      'Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"'
+    );
+  });
+
+  test('throws when nothing is copied and error option is set (no callback)', () => {
+    createDir('output');
+    expect(() => {
+      copyfiles(['input/doesnotexist.txt', 'output'], { error: true });
+    }).toThrow('nothing copied');
+  });
+
   test('throws with rename glob and up 2', () => new Promise((done: any) => {
     // Setup: create input files in subfolders
     createDir('input/sub1');
