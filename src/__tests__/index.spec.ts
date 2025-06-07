@@ -1,4 +1,4 @@
-import { mkdirSync, readdir, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdir, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { globSync } from 'tinyglobby';
 import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -213,6 +213,34 @@ describe('copyfiles', () => {
         expect(new Set(files)).toEqual(new Set(['output/a.txt', 'output/b.txt']));
       });
     }
+  });
+
+  test('dryRun does not copy files but logs actions', () => {
+    writeFileSync('input/a.txt', 'a');
+    writeFileSync('input/other/c.js', 'c');
+    const logSpy = vi.spyOn(console, 'log');
+
+    copyfiles(['input/**/*', 'output'], { dryRun: true });
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('=== dry-run ==='));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('copy: input/a.txt → output/input/a.txt'));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('copy: input/other/c.js → output/input/other/c.js'));
+    expect(existsSync('output/a.txt')).toBe(false);
+    logSpy.mockRestore();
+  });
+
+  test('dryRun with rename does not copy files but logs actions', () => {
+    createDir('input/sub');
+    writeFileSync('input/foo.css', 'foo');
+    writeFileSync('input/sub/bar.css', 'bar');
+    const logSpy = vi.spyOn(console, 'log');
+
+    copyfiles(['input/**/*.css', 'output/*.scss'], { dryRun: true, stat: true });
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('=== dry-run ==='));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('copy: input/foo.css → output/input/foo.scss'));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('copy: input/sub/bar.css → output/input/sub/bar.scss'));
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Files copied:   2'));
+    expect(existsSync('output/a.txt')).toBe(false);
+    logSpy.mockRestore();
   });
 
   test('verbose flat', () =>

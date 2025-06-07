@@ -2,6 +2,9 @@ export interface CopyFileOptions {
   /** Include files & directories beginning with a dot (.) */
   all?: boolean;
 
+  /** Show what would be copied, but do not actually copy any files */
+  dryRun?: boolean;
+
   /** Throw error if nothing is copied */
   error?: boolean;
 

@@ -6,14 +6,13 @@
 [![npm](https://img.shields.io/npm/dy/native-copyfiles)](https://www.npmjs.com/package/native-copyfiles)
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/native-copyfiles?color=success&label=gzip)](https://bundlephobia.com/result?p=native-copyfiles)
 
-## Copyfiles
-#### native-copyfiles
+## native-copyfiles
 
 Copy files easily via JavaScript or the CLI, it uses [tinyglobby](https://www.npmjs.com/package/tinyglobby) internally for glob patterns and [yargs](https://www.npmjs.com/package/yargs) for the CLI.
 
-The library is very similar to the [copyfiles](https://www.npmjs.com/package/copyfiles) package, it is however written with more native NodeJS code and less dependencies (3 instead of 7). The package options are the same (except for `--soft` which is not implemented), some new options were also added in this project here (see below).
+The library is very similar from the outside to the [copyfiles](https://www.npmjs.com/package/copyfiles) package, however its internal is quite different, it uses more native NodeJS code and less dependencies (3 instead of 7). The package options are the same (except for `--soft` which is not implemented), some new options were also added in this project here (see below).
 
-> Note: there is 1 major difference with `copyfiles`, any options must be provided as a suffix after the source/target directories command (the original project had them as prefix)<br>
+> Note: there is 1 noticeable difference with `copyfiles`, any options must be provided as a suffix after the source/target directories command (the original project had them as prefix).<br>
 > This mean calling: `copyfiles source target [options]` instead of `copyfiles [options] source target`
 
 ### Install
@@ -28,16 +27,17 @@ npm install native-copyfiles -D
   Usage: copyfiles inFile [more files ...] outDirectory [options]
 
   Options:
-    -u, --up       slice a path off the bottom of the paths                  [number]
-    -a, --all      include files & directories begining with a dot (.)       [boolean]
-    -f, --flat     flatten the output                                        [boolean]
-    -e, --exclude  pattern or glob to exclude (may be passed multiple times) [string|string[]]
-    -E, --error    throw error if nothing is copied                          [boolean]
-    -V, --verbose  print more information to console                         [boolean]
-    -F, --follow   follow symbolic links                                     [boolean]
-    -s, --stat     show statistics after execution (time + file count)       [boolean]
-    -v, --version  show version number                                       [boolean]
-    -h, --help     show help                                                 [boolean]
+    -u, --up       slice a path off the bottom of the paths                     [number]
+    -a, --all      include files & directories begining with a dot (.)          [boolean]
+    -d, --dry-run  show what would be copied, without actually copying anything [boolean]
+    -f, --flat     flatten the output                                           [boolean]
+    -e, --exclude  pattern or glob to exclude (may be passed multiple times)    [string|string[]]
+    -E, --error    throw error if nothing is copied                             [boolean]
+    -V, --verbose  print more information to console                            [boolean]
+    -F, --follow   follow symbolic links                                        [boolean]
+    -s, --stat     show statistics after execution (time + file count)          [boolean]
+    -v, --version  show version number                                          [boolean]
+    -h, --help     show help                                                    [boolean]
 ```
 
 > [!NOTE]
@@ -202,6 +202,7 @@ and finally the third and last argument is a callback function which is executed
     up: number,         // slice a path off the bottom of the paths
     exclude: string,    // exclude pattern
     all: bool,	        // include dot files
+    dryRun: bool,       // show what would be copied, without actually copying anything
     follow: bool,       // follow symlinked directories when expanding ** patterns
     error: bool         // raise errors if no files copied
     stat: bool          // show statistics after execution (time + file count)

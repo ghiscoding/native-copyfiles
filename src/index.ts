@@ -1,7 +1,7 @@
 import { createReadStream, createWriteStream, existsSync, mkdirSync, statSync } from 'node:fs';
 import { basename, dirname, extname, join, normalize, posix, sep } from 'node:path';
-import untildify from 'untildify';
 import { type GlobOptions, globSync } from 'tinyglobby';
+import untildify from 'untildify';
 
 import type { CopyFileOptions } from './interfaces.js';
 
@@ -13,6 +13,15 @@ export function createDir(dir: string) {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
+}
+
+/**
+ * Converts a path from any platform to posix
+ * @param {String} pathStr - the path to convert
+ * @returns {String} - the converted posix path
+ */
+export function convertToPosix(pathStr: string) {
+  return pathStr.replaceAll(sep, posix.sep);
 }
 
 /**
@@ -84,6 +93,15 @@ function getDestinationPath(inFile: string, outDir: string, options: CopyFileOpt
   return callRenameWhenDefined(inFile, dest, options);
 }
 
+/** Show statistics when `verbose` and/or `stat` are enabled */
+function displayStatWhenEnabled(options: CopyFileOptions, count: number) {
+  if (options.verbose || options.stat) {
+    console.log('\n');
+    console.log(`Files copied:   ${count}`);
+    console.timeEnd('Execution time');
+  }
+}
+
 /**
  * Copy the files per a glob pattern, the first item(s) can be a 1 or more files to copy
  * while the last item in the array is the output outDirectory directory
@@ -134,8 +152,8 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
     }
   }
 
+  // create destination directory if not exists
   if (!isDestFile) {
-    // create destination directory if not exists
     createDir(dirname(outPath));
   }
 
@@ -175,6 +193,20 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
     return;
   }
 
+  if (options.dryRun) {
+    const head = '=== dry-run ===';
+    console.log(head);
+    allFiles.forEach(inFile => {
+      const dest = getDestinationPath(inFile, outPath, options, isSingleFile && isDestFile);
+      console.log(`copy: ${convertToPosix(inFile)} → ${convertToPosix(dest)}`);
+    });
+    displayStatWhenEnabled(options, allFiles.length);
+    console.log(head);
+
+    if (typeof cb === 'function') cb();
+    return;
+  }
+
   allFiles.forEach(inFile => {
     copyFileStream(
       inFile,
@@ -189,10 +221,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
         }
         completed++;
         if (completed === allFiles.length) {
-          if (options.verbose || options.stat) {
-            console.log(`Files copied:   ${allFiles.length}`);
-            console.timeEnd('Execution time');
-          }
+          displayStatWhenEnabled(options, allFiles.length);
           if (typeof cb === 'function') cb();
         }
       },
@@ -207,6 +236,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
  * @param {String} outDir
  * @param {CopyFileOptions} options
  * @param {(e?: Error) => void} cb
+ * @param {Boolean} isSingleFileRename - whether the operation is a single file rename (no glob, dest is not a directory, no *)
  */
 function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions, cb: (e?: Error) => void, isSingleFileRename = false) {
   outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
@@ -245,10 +275,6 @@ function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions
   });
 
   readStream.pipe(writeStream);
-
-  function convertToPosix(pathStr: string) {
-    return pathStr.replaceAll(sep, posix.sep);
-  }
 }
 
 function depth(str: string) {

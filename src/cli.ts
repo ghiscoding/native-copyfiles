@@ -20,6 +20,11 @@ const argv = cli
     type: 'boolean',
     description: 'include files & directories begining with a dot (.)',
   })
+  .option('dryRun', {
+    alias: 'd',
+    type: 'boolean',
+    description: 'Show what would be copied, but do not actually copy any files',
+  })
   .option('error', {
     alias: 'E',
     type: 'boolean',
