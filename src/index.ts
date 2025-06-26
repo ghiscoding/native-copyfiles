@@ -5,6 +5,8 @@ import untildify from 'untildify';
 
 import type { CopyFileOptions } from './interfaces.js';
 
+export type * from './interfaces.js';
+
 /**
  * Check if a directory exists, if not then create it
  * @param {String} dir - directory to create

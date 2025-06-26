@@ -1,76 +1,99 @@
 #!/usr/bin/env node
 
-import yargs from 'yargs/yargs';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'cli-nano';
 
 import { copyfiles } from './index.js';
 import type { CopyFileOptions } from './interfaces.js';
 
-const cli = yargs(process.argv.slice(2));
-const argv = cli
-  .command('<inFile> <outDirectory> [option]', 'Copy files from a source to a destination directory')
-  .positional('inFile', {
-    describe: 'source files',
-    type: 'string',
-  })
-  .positional('outDirectory', {
-    describe: 'destination directory',
-  })
-  .option('all', {
-    alias: 'a',
-    type: 'boolean',
-    description: 'include files & directories begining with a dot (.)',
-  })
-  .option('dryRun', {
-    alias: 'd',
-    type: 'boolean',
-    description: 'Show what would be copied, but do not actually copy any files',
-  })
-  .option('error', {
-    alias: 'E',
-    type: 'boolean',
-    description: 'throw error if nothing is copied',
-  })
-  .option('exclude', {
-    alias: 'e',
-    type: 'array',
-    description: 'pattern or glob to exclude (may be passed multiple times)',
-  })
-  .option('flat', {
-    alias: 'f',
-    type: 'boolean',
-    description: 'flatten the output',
-  })
-  .option('follow', {
-    alias: 'F',
-    type: 'boolean',
-    description: 'follow symbolink links',
-  })
-  .option('stat', {
-    alias: 's',
-    type: 'boolean',
-    description: 'show statistics after execution (execution time + file count)',
-  })
-  .option('up', {
-    alias: 'u',
-    type: 'number',
-    description: 'slice a path off the bottom of the paths',
-  })
-  .option('verbose', {
-    alias: 'V',
-    type: 'boolean',
-    description: 'print more information to console',
-  })
-  .help('help')
-  .alias('help', 'h')
-  .alias('version', 'v')
-  .version('0.1.6')
-  .parse();
+function readPackage() {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const pkgPath = resolve(__dirname, '../package.json');
+  const pkg = readFileSync(pkgPath, 'utf8');
+  return JSON.parse(pkg);
+}
 
-copyfiles((argv as any)._ as string[], argv as CopyFileOptions, err => {
+function handleError(err?: Error) {
   if (err) {
     console.error(err);
     process.exit(1);
   } else {
     process.exit(0);
   }
-});
+}
+
+try {
+  const results = parseArgs({
+    command: {
+      name: 'copyfiles',
+      description: 'Copy files from a source to a destination directory',
+      positional: [
+        {
+          name: 'inFile',
+          description: 'Source files',
+          type: 'string',
+          variadic: true,
+          required: true,
+        },
+        {
+          name: 'outDirectory',
+          description: 'Destination directory',
+          required: true,
+        },
+      ],
+    },
+    options: {
+      all: {
+        alias: 'a',
+        type: 'boolean',
+        description: 'Include files & directories begining with a dot (.)',
+      },
+      dryRun: {
+        alias: 'd',
+        type: 'boolean',
+        description: 'Show what would be copied, but do not actually copy any files',
+      },
+      error: {
+        alias: 'E',
+        type: 'boolean',
+        description: 'Throw error if nothing is copied',
+      },
+      exclude: {
+        alias: 'e',
+        type: 'array',
+        description: 'Pattern or glob to exclude (may be passed multiple times)',
+      },
+      flat: {
+        alias: 'f',
+        type: 'boolean',
+        description: 'Flatten the output',
+      },
+      follow: {
+        alias: 'F',
+        type: 'boolean',
+        description: 'Follow symbolink links',
+      },
+      stat: {
+        alias: 's',
+        type: 'boolean',
+        description: 'Show statistics after execution (execution time + file count)',
+      },
+      up: {
+        alias: 'u',
+        type: 'number',
+        description: 'Slice a path off the bottom of the paths',
+      },
+      verbose: {
+        alias: 'V',
+        type: 'boolean',
+        description: 'Print more information to console',
+      },
+    },
+    version: readPackage().version,
+  });
+  copyfiles([...results.inFile, results.outDirectory], results as CopyFileOptions, err => handleError(err));
+} catch (err) {
+  handleError(err as Error);
+}

@@ -13,7 +13,10 @@
           "test-copyout",
           "--up",
           "0",
-          "--verbose"
+          "--verbose",
+          "--dry-run",
+          "--flat",
+          "--stat"
         ]
       },
       {

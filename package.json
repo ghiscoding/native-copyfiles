@@ -51,9 +51,9 @@
     "test:coverage": "vitest --coverage --config ./vitest.config.mts"
   },
   "dependencies": {
+    "cli-nano": "^0.2.1",
     "tinyglobby": "^0.2.14",
-    "untildify": "^5.0.0",
-    "yargs": "^18.0.0"
+    "untildify": "^5.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.5",

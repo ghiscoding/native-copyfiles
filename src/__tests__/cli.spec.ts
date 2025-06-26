@@ -3,15 +3,16 @@ import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vit
 
 import { createDir } from '../index.js';
 
-async function cleanupFolders() {
+function cleanupFolders() {
   try {
+    rmSync('input1', { recursive: true, force: true });
     rmSync('input2', { recursive: true, force: true });
     rmSync('output2', { recursive: true, force: true });
   } catch (_) {}
 }
 
 describe('copyfiles', () => {
-  afterEach(async () => {
+  afterEach(() => {
     vi.clearAllMocks();
     cleanupFolders();
     process.exitCode = undefined;
@@ -20,6 +21,7 @@ describe('copyfiles', () => {
   afterAll(() => cleanupFolders());
 
   beforeEach(() => {
+    cleanupFolders();
     createDir('input2/other');
   });
 
@@ -29,17 +31,18 @@ describe('copyfiles', () => {
       new Promise((done: any) => {
         writeFileSync('input2/a.txt', 'a');
         writeFileSync('input2/b.txt', 'b');
-        writeFileSync('input2/c.js.txt', 'c');
-        writeFileSync('input2/d.ps.txt', 'd');
+        writeFileSync('input2/c.doc', 'c');
+        writeFileSync('input2/d.md', 'd');
 
-        vi.spyOn(process, 'argv', 'get').mockReturnValue([
+        vi.spyOn(process, 'argv', 'get').mockReturnValueOnce([
           'node.exe',
           'native-copyfiles/dist/cli.js',
           'input2',
           'output2',
           '--exclude',
-          '**/*.js.txt',
-          '**/*.ps.txt',
+          '**/*.doc',
+          '--exclude',
+          '**/*.md',
         ]);
 
         // Mock process.exit so it doesn't kill the test runner
