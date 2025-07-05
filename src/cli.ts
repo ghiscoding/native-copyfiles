@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'cli-nano';
 
 import { copyfiles } from './index.js';
-import type { CopyFileOptions } from './interfaces.js';
 
 function readPackage() {
   const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,7 +24,7 @@ function handleError(err?: Error) {
 }
 
 try {
-  const results = parseArgs({
+  const config = {
     command: {
       name: 'copyfiles',
       description: 'Copy files from a source to a destination directory',
@@ -41,6 +40,7 @@ try {
           name: 'outDirectory',
           description: 'Destination directory',
           required: true,
+          type: 'string',
         },
       ],
     },
@@ -92,8 +92,10 @@ try {
       },
     },
     version: readPackage().version,
-  });
-  copyfiles([...results.inFile, results.outDirectory], results as CopyFileOptions, err => handleError(err));
+  } as const;
+
+  const results = parseArgs(config);
+  copyfiles([...results.inFile, results.outDirectory], results, err => handleError(err));
 } catch (err) {
   handleError(err as Error);
 }
