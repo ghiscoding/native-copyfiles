@@ -21,7 +21,7 @@ describe('copyfiles', () => {
           // expect(exitSpy).toHaveBeenCalledWith(1);
           // Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"
           expect(errorSpy).toHaveBeenCalledWith(
-            new Error('Missing required positional argument, i.e.: "copyfiles <inFile> <outDirectory>"'),
+            new Error('Missing required positional argument, i.e.: "copyfiles <inFile..> <outDirectory>"'),
           );
           expect(exitSpy).toHaveBeenCalledWith(1);
           process.exitCode = undefined;
