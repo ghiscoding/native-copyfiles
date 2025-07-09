@@ -27,18 +27,25 @@ try {
   const config = {
     command: {
       name: 'copyfiles',
-      description: 'Copy files from a source to a destination directory',
+      describe: 'Copy files from a source to a destination directory',
+      examples: [
+        { cmd: '$0 something/*.js out', describe: `if all the files are in a folder that you don't want in the path out path` },
+        {
+          cmd: '$0 something/*.js out -u 1',
+          describe: 'which would put all the js files in `"out/something"`, you can use the `--up` (or `-u`) option',
+        },
+      ],
       positionals: [
         {
           name: 'inFile',
-          description: 'Source file(s)',
+          describe: 'Source file(s)',
           type: 'string',
           variadic: true,
           required: true,
         },
         {
           name: 'outDirectory',
-          description: 'Destination directory',
+          describe: 'Destination directory',
           required: true,
           type: 'string',
         },
@@ -48,47 +55,47 @@ try {
       all: {
         alias: 'a',
         type: 'boolean',
-        description: 'Include files & directories begining with a dot (.)',
+        describe: 'Include files & directories begining with a dot (.)',
       },
       dryRun: {
         alias: 'd',
         type: 'boolean',
-        description: 'Show what would be copied, but do not actually copy any files',
+        describe: 'Show what would be copied, but do not actually copy any files',
       },
       error: {
         alias: 'E',
         type: 'boolean',
-        description: 'Throw error if nothing is copied',
+        describe: 'Throw error if nothing is copied',
       },
       exclude: {
         alias: 'e',
         type: 'array',
-        description: 'Pattern or glob to exclude (may be passed multiple times)',
+        describe: 'Pattern or glob to exclude (may be passed multiple times)',
       },
       flat: {
         alias: 'f',
         type: 'boolean',
-        description: 'Flatten the output',
+        describe: 'Flatten the output',
       },
       follow: {
         alias: 'F',
         type: 'boolean',
-        description: 'Follow symbolink links',
+        describe: 'Follow symbolink links',
       },
       stat: {
         alias: 's',
         type: 'boolean',
-        description: 'Show statistics after execution (execution time + file count)',
+        describe: 'Show statistics after execution (execution time + file count)',
       },
       up: {
         alias: 'u',
         type: 'number',
-        description: 'Slice a path off the bottom of the paths',
+        describe: 'Slice a path off the bottom of the paths',
       },
       verbose: {
         alias: 'V',
         type: 'boolean',
-        description: 'Print more information to console',
+        describe: 'Print more information to console',
       },
     },
     version: readPackage().version,
