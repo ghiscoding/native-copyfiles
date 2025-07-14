@@ -107,6 +107,9 @@ You can use the `-e` option to exclude some files from the pattern, so to exclud
 copyfiles "**/*.test.js" -f ./foo/**/*.js out -e
 ```
 
+> [!NOTE]
+> By default the `.git/` and `node_modules/` directories will be excluded.
+
 Other options include
 
 - `-a` or `--all` which includes files that start with a dot.

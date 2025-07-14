@@ -158,10 +158,12 @@ export function copyfiles(paths: string[], options: CopyFileOptions, callback?: 
     createDir(dirname(outPath));
   }
 
-  const globOptions: GlobOptions = {};
-  if (Array.isArray(options.exclude) && options.exclude.length > 0) {
-    globOptions.ignore = options.exclude;
-  }
+  const excludeGlobs = [
+    '**/.git/**',
+    '**/node_modules/**',
+    ...(Array.isArray(options.exclude) && options.exclude.length > 0 ? options.exclude : []),
+  ];
+  const globOptions: GlobOptions = { ignore: excludeGlobs };
   if (options.all) {
     globOptions.dot = true;
   }
