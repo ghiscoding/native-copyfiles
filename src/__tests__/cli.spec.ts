@@ -46,7 +46,7 @@ describe('copyfiles', () => {
         ]);
 
         // Mock process.exit so it doesn't kill the test runner
-        // @ts-ignore
+        // @ts-expect-error
         const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
           if (code && code !== 0) {
             exitSpy.mockRestore();
