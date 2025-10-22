@@ -69,6 +69,11 @@
     "typescript": "^5.9.3",
     "vitest": "^4.0.1"
   },
+  "pnpm": {
+    "overrides": {
+      "vite": "npm:rolldown-vite@latest"
+    }
+  },
   "engines": {
     "node": "^20.0.0 || >=22.0.0"
   },
