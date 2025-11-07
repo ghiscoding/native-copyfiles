@@ -110,7 +110,7 @@ function displayStatWhenEnabled(options: CopyFileOptions, count: number) {
  * @param {CopyFileOptions} options - CLI options
  * @param {(e?: Error) => void} callback - optionally callback that will be executed after copy is finished or when an error occurs
  */
-export function copyfiles(paths: string[], options: CopyFileOptions, callback?: (e?: Error) => void) {
+export function copyfiles(paths: string[], options: CopyFileOptions = {}, callback?: (e?: Error) => void) {
   const cb = callback || options.callback;
 
   if (options.verbose || options.stat) {
