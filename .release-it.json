@@ -5,7 +5,14 @@
   },
   "github": {
     "release": true,
-    "releaseName": "v${version}"
+    "releaseName": "v${version}",
+    "releaseNotes": {
+      "commit": "* ${commit.subject} (${sha}){ - thanks @${author.login}!}"
+    },
+    "comments": {
+      "issue": "✅ This issue has been resolved and included in version ${version} 📦<br>The release is available on: [GitHub release](${releaseUrl}) 🚀",
+      "pr": "🎉 This pull request is included in version ${version} 📦<br>The release is available on: [GitHub release](${releaseUrl}) 🚀"
+    }
   },
   "npm": {
     "publish": true,
