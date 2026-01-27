@@ -66,13 +66,11 @@
     "premove": "^4.0.0",
     "release-it": "^19.2.4",
     "typescript": "^5.9.3",
+    "vite": "^8.0.0-beta.10",
     "vitest": "^4.0.18"
   },
   "engines": {
     "node": "^20.0.0 || >=22.0.0"
-  },
-  "overrides": {
-    "vite": "^8.0.0-beta.8"
   },
   "funding": {
     "type": "ko_fi",
