@@ -196,7 +196,8 @@ export function copyfiles(paths: string[], options: CopyFileOptions = {}, callba
     files = files.filter(f => {
       try {
         return !statSync(f).isDirectory();
-      } /* v8 ignore next */ catch {
+      } catch {
+        /* v8 ignore next */
         return false;
       }
     });
