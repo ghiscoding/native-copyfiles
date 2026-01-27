@@ -1,8 +1,6 @@
-import { createReadStream, createWriteStream, existsSync, mkdirSync, statSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, globSync, mkdirSync, statSync } from 'node:fs';
 import { basename, dirname, extname, join, normalize, posix, sep } from 'node:path';
-import { type GlobOptions, globSync } from 'tinyglobby';
 import untildify from 'untildify';
-
 import type { CopyFileOptions } from './interfaces.js';
 
 export type * from './interfaces.js';
@@ -47,7 +45,7 @@ function callRenameWhenDefined(inFile: string, dest: string, options: CopyFileOp
 /**
  * Calculate the destination path for a given input file and options.
  */
-function getDestinationPath(inFile: string, outDir: string, options: CopyFileOptions, isSingleFileRename = false): string {
+export function getDestinationPath(inFile: string, outDir: string, options: CopyFileOptions, isSingleFileRename = false): string {
   const fileDir = dirname(inFile);
   const fileName = basename(inFile);
   const srcExt = extname(fileName);
@@ -104,6 +102,20 @@ function displayStatWhenEnabled(options: CopyFileOptions, count: number) {
 }
 
 /**
+ * Helper to filter dotfiles if needed (dot: true)
+ * @param paths - array of file/folder paths
+ * @param dot - if true, include dotfiles/folders; otherwise, filter them out
+ */
+export function filterDotFiles(paths: string[], dot: boolean): string[] {
+  if (dot) return paths;
+  return paths.filter(p => {
+    // Remove files/dirs starting with a dot after last slash
+    const base = p.split(/[\\/]/).pop();
+    return base && !base.startsWith('.');
+  });
+}
+
+/**
  * Copy the files per a glob pattern, the first item(s) can be a 1 or more files to copy
  * while the last item in the array is the output outDirectory directory
  * @param {String[]} paths - includes both source(s) and outDirectory directory
@@ -147,8 +159,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions = {}, callba
         const stat = statSync(outPath);
         isDestFile = !stat.isDirectory();
       }
-    } catch {
-      /* v8 ignore next */
+    } /* v8 ignore next */ catch {
       isDestFile = true;
     }
   }
@@ -158,26 +169,47 @@ export function copyfiles(paths: string[], options: CopyFileOptions = {}, callba
     createDir(dirname(outPath));
   }
 
-  const excludeGlobs = [
-    '**/.git/**',
-    '**/node_modules/**',
-    ...(Array.isArray(options.exclude) && options.exclude.length > 0 ? options.exclude : []),
-  ];
-  const globOptions: GlobOptions = { ignore: excludeGlobs };
-  if (options.all) {
-    globOptions.dot = true;
-  }
-  if (options.follow) {
-    globOptions.followSymbolicLinks = true;
+  // Set default excludeGlobs only if not provided by user
+  let excludeGlobs: string[];
+  if (Array.isArray(options.exclude) && options.exclude.length > 0) {
+    excludeGlobs = options.exclude;
+  } else {
+    excludeGlobs = ['**/.git/**', '**/node_modules/**'];
   }
 
-  // find all files by using our source glob pattern(s)
-  const allFiles = globSync(sources, globOptions);
+  // Use a Set for deduplication from the start
+  const allFilesSet = new Set<string>();
+  for (const pattern of sources) {
+    let files = globSync(pattern, { exclude: excludeGlobs });
+    // If options.all is set and pattern does not start with a dot, also search for dot-prefixed files
+    if (options.all && pattern.includes('*') && !pattern.startsWith('.')) {
+      // e.g. '*.txt' => '.*.txt', '**/*.txt' => '**/.*.txt'
+      const dotPattern = pattern.replace(/(\*\.[^/]+$|\*$)/, '.$1');
+      if (dotPattern !== pattern) {
+        files = files.concat(globSync(dotPattern, { exclude: excludeGlobs }));
+      }
+    }
+    // Normalize all file paths to POSIX style (forward slashes)
+    files = files.map(f => f.replaceAll('\\', '/'));
+    // Remove directories manually (since nodir is not supported)
+    files = files.filter(f => {
+      try {
+        return !statSync(f).isDirectory();
+      } /* v8 ignore next */ catch {
+        return false;
+      }
+    });
+    // Add to Set for deduplication
+    for (const f of files) {
+      allFilesSet.add(f);
+    }
+  }
+
   if (options.verbose) {
-    console.log('glob found', allFiles);
+    console.log('glob found', Array.from(allFilesSet));
   }
 
-  if (options.error && allFiles.length < 1) {
+  if (options.error && allFilesSet.size < 1) {
     const err = new Error('nothing copied');
     if (typeof cb === 'function') cb(err);
     else throw err;
@@ -187,7 +219,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions = {}, callba
   let completed = 0;
   let hasError = false;
 
-  if (allFiles.length === 0) {
+  if (allFilesSet.size === 0) {
     if (options.verbose || options.stat) {
       console.log(`Files copied:   0`);
       console.timeEnd('Execution time');
@@ -199,18 +231,18 @@ export function copyfiles(paths: string[], options: CopyFileOptions = {}, callba
   if (options.dryRun) {
     const head = '=== dry-run ===';
     console.log(head);
-    allFiles.forEach(inFile => {
+    for (const inFile of allFilesSet) {
       const dest = getDestinationPath(inFile, outPath, options, isSingleFile && isDestFile);
       console.log(`copy: ${convertToPosix(inFile)} → ${convertToPosix(dest)}`);
-    });
-    displayStatWhenEnabled(options, allFiles.length);
+    }
+    displayStatWhenEnabled(options, allFilesSet.size);
     console.log(head);
 
     if (typeof cb === 'function') cb();
     return;
   }
 
-  allFiles.forEach(inFile => {
+  for (const inFile of allFilesSet) {
     copyFileStream(
       inFile,
       outPath,
@@ -223,14 +255,14 @@ export function copyfiles(paths: string[], options: CopyFileOptions = {}, callba
           return;
         }
         completed++;
-        if (completed === allFiles.length) {
-          displayStatWhenEnabled(options, allFiles.length);
+        if (completed === allFilesSet.size) {
+          displayStatWhenEnabled(options, allFilesSet.size);
           if (typeof cb === 'function') cb();
         }
       },
       isSingleFile && isDestFile, // pass as single rename mode
     );
-  });
+  }
 }
 
 /**

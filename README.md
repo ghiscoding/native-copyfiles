@@ -17,6 +17,9 @@ The library is very similar to the [copyfiles](https://www.npmjs.com/package/cop
 > **Note**: there is 1 noticeable difference with `copyfiles` package, all the CLI options must be provided as suffix and after the source/target directories command (the original `copyfiles` project has them as prefix).<br>
 > This mean calling: `copyfiles source target [options]` instead of `copyfiles [options] source target`
 
+> [!NOTE]
+> This project now requires Node.JS >= 22.17.0 so that we can use the native `fs.glob`, however if you can't update your Node.JS just yet, then just stick with `native-copyfiles: ^1.3.7` since that is the only change in v2.0.0
+
 ### Install
 
 ```bash
@@ -105,7 +108,7 @@ copyfiles "**/*.test.js" -f "./foo/**/*.js" out -e
 ```
 
 > [!NOTE]
-> By default the `.git/` and `node_modules/` directories will be excluded but only when using globs.
+> By default the `.git/` and `node_modules/` directories will be excluded (when using globs). If you provide your own `--exclude` option, it will override the defaults and only use your patterns.
 
 Other options include
 

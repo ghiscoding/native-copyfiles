@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, readdir, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { join as posixJoin } from 'node:path/posix';
 import { Readable } from 'node:stream';
 import { globSync } from 'tinyglobby';
-import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest';
 
-import { copyfiles, createDir } from '../index.js';
+import { copyfiles, createDir, filterDotFiles, getDestinationPath } from '../index.js';
 
 let shouldMockReadError = false;
 const error = new Error('Mock read error');
@@ -41,7 +42,7 @@ describe('copyfiles', () => {
   });
 
   beforeEach(() => {
-    createDir('input/other');
+    mkdirSync('input/other', { recursive: true });
   });
 
   test('throws when inFile or outDir are missing', () =>
@@ -162,7 +163,7 @@ describe('copyfiles', () => {
 
   test('with up true', () =>
     new Promise((done: any) => {
-      createDir('input/deep');
+      mkdirSync('input/deep');
       writeFileSync('input/a.txt', 'a');
       writeFileSync('input/b.txt', 'b');
       writeFileSync('input/c.js', 'c');
@@ -242,7 +243,7 @@ describe('copyfiles', () => {
   });
 
   test('dryRun with rename does not copy files but logs actions', () => {
-    createDir('input/sub');
+    mkdirSync('input/sub');
     writeFileSync('input/foo.css', 'foo');
     writeFileSync('input/sub/bar.css', 'bar');
     const logSpy = vi.spyOn(console, 'log');
@@ -277,8 +278,8 @@ describe('copyfiles', () => {
     }));
 
   test('createDir does not throw if dir exists', () => {
-    createDir('input');
-    expect(() => createDir('input')).not.toThrow();
+    mkdirSync('input', { recursive: true });
+    expect(() => mkdirSync('input', { recursive: true })).not.toThrow();
   });
 
   test('throws when inFile or outDir are missing (no callback)', () => {
@@ -419,8 +420,8 @@ describe('copyfiles', () => {
   test('copies and renames files, using --flat option, from subfolders using wildcard in destination with .scss extension', () =>
     new Promise((done: any) => {
       // Setup: create input files in subfolders
-      createDir('input/sub1');
-      createDir('input/sub2/deep1');
+      mkdirSync('input/sub1');
+      mkdirSync('input/sub2/deep1', { recursive: true });
       writeFileSync('input/root.css', '.root { color: black }');
       writeFileSync('input/sub1/input1.css', 'h1 { color: red }');
       writeFileSync('input/sub2/input2.css', 'h2 { color: blue }');
@@ -443,8 +444,8 @@ describe('copyfiles', () => {
   test('copies and renames files, using --up option, from subfolders using wildcard in destination with .scss extension', () =>
     new Promise((done: any) => {
       // Setup: create input files in subfolders
-      createDir('input/sub1');
-      createDir('input/sub2/deep1');
+      mkdirSync('input/sub1');
+      mkdirSync('input/sub2/deep1', { recursive: true });
       writeFileSync('input/root.css', '.root { color: black }');
       writeFileSync('input/sub1/input1.css', 'h1 { color: red }');
       writeFileSync('input/sub2/input2.css', 'h2 { color: blue }');
@@ -465,7 +466,7 @@ describe('copyfiles', () => {
   test('copies and renames files, using --up:1 option, from subfolders using wildcard in destination with .scss extension', () =>
     new Promise((done: any) => {
       // Setup: create input files in subfolders
-      createDir('input/deep1');
+      mkdirSync('input/deep1');
       writeFileSync('input/input1.css', 'h1 { color: red }');
       writeFileSync('input/input2.css', 'h2 { color: blue }');
       writeFileSync('input/input3.css', 'h3 { color: green }');
@@ -484,9 +485,9 @@ describe('copyfiles', () => {
   test('copies and renames files, using --up:1 option, from subfolders using wildcard in destination with .scss extension', () =>
     new Promise((done: any) => {
       // Setup: create input files in subfolders
-      createDir('input/sub1');
-      createDir('input/sub2');
-      createDir('input/sub2/deep1');
+      mkdirSync('input/sub1');
+      mkdirSync('input/sub2');
+      mkdirSync('input/sub2/deep1', { recursive: true });
       writeFileSync('input/root.css', '.root { color: black }');
       writeFileSync('input/sub1/input1.css', 'h1 { color: red }');
       writeFileSync('input/sub2/input2.css', 'h2 { color: blue }');
@@ -507,8 +508,8 @@ describe('copyfiles', () => {
   test('copies and renames files, using --flat option and rename callback, from subfolders with .scss extension', () =>
     new Promise((done: any) => {
       // Setup: create input files in subfolders
-      createDir('input/sub1');
-      createDir('input/sub2/deep1');
+      mkdirSync('input/sub1');
+      mkdirSync('input/sub2/deep1', { recursive: true });
       writeFileSync('input/root.css', '.root { color: black }');
       writeFileSync('input/sub1/input1.css', 'h1 { color: red }');
       writeFileSync('input/sub2/input2.css', 'h2 { color: blue }');
@@ -538,8 +539,8 @@ describe('copyfiles', () => {
   test('copies and renames files, using --up:1 option and rename callback, from subfolders but keeps .css extension', () =>
     new Promise((done: any) => {
       // Setup: create input files in subfolders
-      createDir('input/sub1');
-      createDir('input/sub2/deep1');
+      mkdirSync('input/sub1');
+      mkdirSync('input/sub2/deep1', { recursive: true });
       writeFileSync('input/root.css', '.root { color: black }');
       writeFileSync('input/sub1/input1.css', 'h1 { color: red }');
       writeFileSync('input/sub2/input2.css', 'h2 { color: blue }');
@@ -566,7 +567,7 @@ describe('copyfiles', () => {
 
   test('copies and renames files using both destination glob and rename callback', () =>
     new Promise((done: any) => {
-      createDir('input/sub');
+      mkdirSync('input/sub');
       writeFileSync('input/foo.css', 'foo');
       writeFileSync('input/sub/bar.css', 'bar');
       copyfiles(
@@ -653,7 +654,7 @@ describe('copyfiles', () => {
 
   test('copies and renames files, using --up:true and destination glob, from nested folders', () =>
     new Promise((done: any) => {
-      createDir('input/level1/level2');
+      mkdirSync('input/level1/level2', { recursive: true });
       writeFileSync('input/level1/level2/a.css', 'a');
       copyfiles(['input/**/*.css', 'output/*.scss'], { up: true }, err => {
         expect(err).toBeUndefined();
@@ -716,8 +717,8 @@ describe('copyfiles', () => {
   test('throws with rename glob and up 2', () =>
     new Promise((done: any) => {
       // Setup: create input files in subfolders
-      createDir('input/sub1');
-      createDir('input/sub2/deep1');
+      mkdirSync('input/sub1');
+      mkdirSync('input/sub2/deep1', { recursive: true });
       writeFileSync('input/root.css', '.root { color: black }');
       writeFileSync('input/sub1/input1.css', 'h1 { color: red }');
       writeFileSync('input/sub2/input2.css', 'h2 { color: blue }');
@@ -731,4 +732,31 @@ describe('copyfiles', () => {
         }
       });
     }));
+
+  describe('utils', () => {
+    it('getDestinationPath - single file rename branch', () => {
+      const result = getDestinationPath('foo.txt', 'dest.txt', {}, true);
+      expect(result).toBe('dest.txt');
+    });
+
+    it('getDestinationPath - flat branch', () => {
+      const result = getDestinationPath('foo/bar.txt', 'dest', { flat: true }, false);
+      expect(result.replaceAll('\\', '/').endsWith(posixJoin('dest', 'bar.txt'))).toBe(true);
+    });
+
+    it('getDestinationPath - up === true branch', () => {
+      const result = getDestinationPath('foo/bar.txt', 'dest', { up: true }, false);
+      expect(result.replaceAll('\\', '/').endsWith(posixJoin('dest', 'bar.txt'))).toBe(true);
+    });
+
+    it('filterDotFiles returns all if dot=true', () => {
+      const files = ['foo.txt', '.bar.txt'];
+      expect(filterDotFiles(files, true)).toEqual(['foo.txt', '.bar.txt']);
+    });
+
+    it('filterDotFiles filters dotfiles if dot=false', () => {
+      const files = ['foo.txt', '.bar.txt', 'baz/.hidden', 'baz/visible'];
+      expect(filterDotFiles(files, false)).toEqual(['foo.txt', 'baz/visible']);
+    });
+  });
 });
