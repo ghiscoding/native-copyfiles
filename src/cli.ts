@@ -102,7 +102,7 @@ try {
   } as const;
 
   const results = parseArgs(config);
-  copyfiles([...results.inFile, results.outDirectory], results, err => handleError(err));
+  copyfiles(results.inFile, results.outDirectory, results, err => handleError(err));
 } catch (err) {
   handleError(err as Error);
 }

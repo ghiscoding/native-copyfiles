@@ -122,29 +122,26 @@ export function filterDotFiles(paths: string[], dot: boolean): string[] {
  * @param {CopyFileOptions} options - CLI options
  * @param {(e?: Error) => void} callback - optionally callback that will be executed after copy is finished or when an error occurs
  */
-export function copyfiles(paths: string[], options: CopyFileOptions = {}, callback?: (e?: Error) => void) {
+export function copyfiles(sources: string | string[], outPath: string, options: CopyFileOptions = {}, callback?: (e?: Error) => void) {
   const cb = callback || options.callback;
+  sources = Array.isArray(sources) ? sources : [sources];
 
   if (options.verbose || options.stat) {
     console.time('Execution time');
   }
 
-  if (paths.length < 2) {
-    throwOrCallback(
-      new Error('Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"'),
-      cb,
-    );
-    return;
+  let errorMsg = '';
+  if (sources.length < 1 || !outPath) {
+    errorMsg = 'Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"';
+  } else if (options.flat && options.up) {
+    errorMsg = 'Cannot use --flat in conjunction with --up option.';
   }
-
-  if (options.flat && options.up) {
-    throwOrCallback(new Error('Cannot use --flat in conjunction with --up option.'), cb);
+  if (errorMsg) {
+    throwOrCallback(new Error(errorMsg), cb);
     return;
   }
 
   // find file source(s) and destination directory
-  const sources = paths.slice(0, -1);
-  let outPath = paths.pop() as string;
   outPath = outPath.startsWith('~') ? untildify(outPath) : outPath;
 
   // Detect single file rename (no glob, dest is not a directory, no *)

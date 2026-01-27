@@ -11,7 +11,7 @@ function cleanupFolders() {
   } catch (_) {}
 }
 
-describe.skip('copyfiles', () => {
+describe('copyfiles', () => {
   afterEach(() => {
     vi.clearAllMocks();
     cleanupFolders();

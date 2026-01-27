@@ -18,7 +18,7 @@ The library is very similar to the [copyfiles](https://www.npmjs.com/package/cop
 > This mean calling: `copyfiles source target [options]` instead of `copyfiles [options] source target`
 
 > [!NOTE]
-> This project now requires Node.JS >= 22.17.0 so that we can use the native `fs.glob`, however if you can't update your Node.JS just yet, then just stick with `native-copyfiles: ^1.3.7` since that is the only change in v2.0.0
+> This project now requires Node.JS >= 22.17.0 so that we can use the native `fs.glob`, however if you can't update your Node.JS just yet, then just stick with `native-copyfiles: ^1.3.7`
 
 ### Install
 
@@ -123,7 +123,7 @@ You can copy and rename a single file by specifying the source file and the dest
 copyfiles input/.env_publish output/.env
 ```
 
-This will copy and rename the file in one step.  
+This will copy and rename the file in one step.
 You can use this for any filename, not just files starting with a dot:
 
 ```bash
@@ -149,12 +149,12 @@ This will copy:
 - `input/foo.css` → `output/foo.scss`
 - `input/bar/baz.css` → `output/bar/baz.scss`
 
-The `*` in the destination is replaced with the base filename from the source.  
+The `*` in the destination is replaced with the base filename from the source.
 You can combine this with `--flat` or `--up` to control the output structure.
 
 #### 2. Rename Using a Callback (JavaScript API)
 
-For advanced renaming, you can use the `rename` callback option in the API.  
+For advanced renaming, you can use the `rename` callback option in the API.
 This function receives the source and destination path and should return the new destination path of each file being processed.
 
 **Example: Change extension to `.scss` using a callback**
@@ -184,7 +184,7 @@ copyfiles(['input/**/*.css', 'output'], {
 
 The `rename` callback gives you full control over the output filename and path.
 
-> **Tip:**  
+> **Tip:**
 > You can use either the wildcard approach or the `rename` callback, or even combine them for advanced scenarios!
 
 > [!NOTE]
@@ -197,12 +197,13 @@ The `rename` callback gives you full control over the output filename and path.
 ```js
 import { copyfiles } from 'native-copyfiles';
 
-copyfiles([paths], opt, callback);
+copyfiles(paths, target, opt, callback);
 ```
 
-The first argument is an array of paths whose last element is assumed to be the destination path.
-The second argument (`opt`) is the "options" argument 
-and finally the third and last argument is a callback function that will be executed after the copy process
+1. first argument is a string or an array of source paths
+2. second argument is the destination path
+3. third argument (`opt`) is the "options" argument
+4. and finally the last argument is a callback function that will be executed after the copy process
 
 ```js
 {
@@ -217,3 +218,6 @@ and finally the third and last argument is a callback function that will be exec
     rename: (src, dest) => string;  // callback to transform the destination filename(s)
 }
 ```
+
+> [!WARNING]
+> Version 2.0 changed the JS API and moved the destination as the 2nd argument (which is different compared to v1.0 which had the destination inside the 1st argument array as the last element which was super confusing).
