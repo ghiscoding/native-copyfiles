@@ -1,7 +1,6 @@
 import { createReadStream, createWriteStream, existsSync, globSync, mkdirSync, type PathLike, statSync } from 'node:fs';
 import { basename, dirname, extname, join, normalize, posix, sep } from 'node:path';
 import untildify from 'untildify';
-import zeptomatch from 'zeptomatch';
 import type { CopyFileOptions } from './interfaces.js';
 
 export type * from './interfaces.js';
@@ -152,7 +151,7 @@ function getMatchedFiles(
     files = files.map(f => f.replaceAll('\\', '/'));
     files = files.filter(f => !tryCreatingDir(f, false));
 
-    // Special case: single file rename to a file path, skip zeptomatch
+    // Special case: single file rename to a file path
     if (isSingleFile && isDestFile) {
       for (const f of files) {
         allFilesSet.add(f);
@@ -160,13 +159,8 @@ function getMatchedFiles(
       continue;
     }
 
-    const matchedFiles: string[] = [];
-    for (const file of files) {
-      if (zeptomatch(adjustedPattern, file)) {
-        matchedFiles.push(file);
-      }
-    }
-    const finalFiles = options.all ? matchedFiles : filterDotFiles(matchedFiles, false);
+    // Use globSync results directly, filter dotfiles if needed
+    const finalFiles = options.all ? files : filterDotFiles(files, false);
     if (isNegated) {
       for (const f of finalFiles) {
         allFilesSet.delete(f);

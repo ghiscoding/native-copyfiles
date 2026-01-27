@@ -19,11 +19,11 @@ The library is very similar to the [copyfiles](https://www.npmjs.com/package/cop
 > The JS API is also different since the destination is the 2nd function argument instead of the first argument.
 
 [!NOTE]
-This project now uses [zeptomatch](https://github.com/ghiscoding/zeptomatch) for advanced glob pattern support (brace expansion, negation, extended wildcards, etc.), enabling more flexible and predictable file matching. Node.JS >= 22.17.0 is required for native file system features. If you can't update your Node.JS just yet, stick with `native-copyfiles: ^1.3.7`.
+This project uses Node.js native file system features for glob pattern support (brace expansion, negation, extended wildcards, etc.), enabling flexible and predictable file matching. Node.JS >= 22.17.0 is required for these features. If you can't update your Node.JS just yet, stick with `native-copyfiles: ^1.3.7`.
 
 ### Advanced Glob Pattern Support
 
-With the addition of [zeptomatch](https://github.com/ghiscoding/zeptomatch), `native-copyfiles` now supports advanced glob patterns, including:
+`native-copyfiles` supports advanced glob patterns, including:
 
 - **Brace expansion**: e.g. `src/*.{js,ts}`
 - **Negation**: e.g. `['src/**/*.js', '!src/**/*.test.js']`
