@@ -1,4 +1,4 @@
-import { createReadStream, createWriteStream, existsSync, globSync, mkdirSync, statSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, globSync, mkdirSync, type PathLike, statSync } from 'node:fs';
 import { basename, dirname, extname, join, normalize, posix, sep } from 'node:path';
 import untildify from 'untildify';
 import type { CopyFileOptions } from './interfaces.js';
@@ -115,6 +115,17 @@ export function filterDotFiles(paths: string[], dot: boolean): string[] {
   });
 }
 
+function tryCreatingDir(path: PathLike, defaultReturn: any) {
+  try {
+    if (statSync(path).isDirectory()) {
+      return `${path}/**`;
+    }
+  } catch {
+    // fall through
+  }
+  return defaultReturn;
+}
+
 /**
  * Copy the files per a glob pattern, the first item(s) can be a 1 or more files to copy
  * while the last item in the array is the output outDirectory directory
@@ -180,11 +191,14 @@ export function copyfiles(paths: string[], options: CopyFileOptions = {}, callba
   // Use a Set for deduplication from the start
   const allFilesSet = new Set<string>();
   for (const pattern of sources) {
-    let files = globSync(pattern, { exclude: excludeGlobs });
+    let adjustedPattern = tryCreatingDir(pattern, pattern);
+    // fs.globSync treats /** differently, so adjust to /**/*
+    adjustedPattern = adjustedPattern.replace(/\*\*$/, '**/*');
+    let files = globSync(adjustedPattern, { exclude: excludeGlobs });
     // If options.all is set and pattern does not start with a dot, also search for dot-prefixed files
     if (options.all && pattern.includes('*') && !pattern.startsWith('.')) {
       // e.g. '*.txt' => '.*.txt', '**/*.txt' => '**/.*.txt'
-      const dotPattern = pattern.replace(/(\*\.[^/]+$|\*$)/, '.$1');
+      const dotPattern = pattern.replace(/(\*\.[^/]+$|\*$)/, '.$1').replace(/\*\*$/, '**/*');
       if (dotPattern !== pattern) {
         files = files.concat(globSync(dotPattern, { exclude: excludeGlobs }));
       }
@@ -192,13 +206,7 @@ export function copyfiles(paths: string[], options: CopyFileOptions = {}, callba
     // Normalize all file paths to POSIX style (forward slashes)
     files = files.map(f => f.replaceAll('\\', '/'));
     // Remove directories manually (since nodir is not supported)
-    files = files.filter(f => {
-      try {
-        return !statSync(f).isDirectory();
-      } /* v8 ignore next */ catch {
-        return false;
-      }
-    });
+    files = files.filter(f => !tryCreatingDir(f, false));
     // Add to Set for deduplication
     for (const f of files) {
       allFilesSet.add(f);
