@@ -89,6 +89,19 @@ describe('copyfiles', () => {
       });
     }));
 
+  test('copies files using directory pattern with /**', () =>
+    new Promise((done: any) => {
+      writeFileSync('input/a.txt', 'a');
+      writeFileSync('input/other/c.js', 'c');
+      copyfiles(['input/**'], 'output', {}, () => {
+        const files = readdirSync('output/input').sort();
+        expect(files).toEqual(['a.txt', 'other']);
+        const otherFiles = readdirSync('output/input/other').sort();
+        expect(otherFiles).toEqual(['c.js']);
+        done();
+      });
+    }));
+
   test('modes', () =>
     new Promise((done: any) => {
       writeFileSync('input/a.txt', 'a', {
