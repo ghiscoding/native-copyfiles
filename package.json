@@ -50,12 +50,13 @@
     "release": "release-it --only-version",
     "prepack": "node scripts/prepack.js",
     "postpack": "node scripts/postpack.js",
-    "test": "vitest --watch --config ./vitest.config.mts",
-    "test:coverage": "vitest --coverage --config ./vitest.config.mts"
+    "test": "vitest --coverage --config ./vitest.config.mts",
+    "test:watch": "vitest --watch --config ./vitest.config.mts"
   },
   "dependencies": {
     "cli-nano": "^1.2.2",
-    "untildify": "^6.0.0"
+    "untildify": "^6.0.0",
+    "zeptomatch": "^2.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.13",

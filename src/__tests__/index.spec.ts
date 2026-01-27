@@ -780,4 +780,31 @@ describe('copyfiles', () => {
       expect(filterDotFiles(files, false)).toEqual(['foo.txt', 'baz/visible']);
     });
   });
+
+  test('brace expansion: {foo,bar}*.txt matches both foo1.txt and bar2.txt', () =>
+    new Promise((done: any) => {
+      writeFileSync('input/foo1.txt', 'foo');
+      writeFileSync('input/bar2.txt', 'bar');
+      writeFileSync('input/baz3.txt', 'baz');
+      copyfiles(['input/{foo,bar}*.txt'], 'output', {}, () => {
+        readdir('output/input', (_err, files) => {
+          expect(files.sort()).toEqual(['bar2.txt', 'foo1.txt']);
+          done();
+        });
+      });
+    }));
+
+  test('negation: ["input/*.js", "!input/*.spec.js", "!input/*.test.js"] matches only non-test js files', () =>
+    new Promise((done: any) => {
+      writeFileSync('input/a.js', 'a');
+      writeFileSync('input/b.spec.js', 'b');
+      writeFileSync('input/c.test.js', 'c');
+      writeFileSync('input/d.js', 'd');
+      copyfiles(['input/*.js', '!input/*.spec.js', '!input/*.test.js'], 'output', {}, () => {
+        readdir('output/input', (_err, files) => {
+          expect((files || []).sort()).toEqual(['a.js', 'd.js']);
+          done();
+        });
+      });
+    }));
 });
