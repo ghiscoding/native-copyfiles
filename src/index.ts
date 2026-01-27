@@ -127,6 +127,54 @@ function tryCreatingDir(path: PathLike, defaultReturn: any) {
 }
 
 /**
+ * Helper to get all matched files from sources, supporting negation and dotfile logic
+ */
+function getMatchedFiles(
+  sources: string[],
+  excludeGlobs: string[],
+  isSingleFile: boolean,
+  isDestFile: boolean,
+  options: CopyFileOptions,
+): Set<string> {
+  const allFilesSet = new Set<string>();
+  for (const pattern of sources) {
+    const isNegated = typeof pattern === 'string' && pattern.startsWith('!');
+    const adjustedPattern = tryCreatingDir(isNegated ? pattern.slice(1) : pattern, isNegated ? pattern.slice(1) : pattern);
+    let files = globSync(adjustedPattern, { exclude: excludeGlobs }) || [];
+    if (options.all && adjustedPattern.includes('*') && !adjustedPattern.startsWith('.')) {
+      const dotPattern = adjustedPattern.replace(/(\*\.[^/]+$|\*$)/, '.$1');
+      if (dotPattern !== adjustedPattern) {
+        files = files.concat(globSync(dotPattern, { exclude: excludeGlobs }));
+      }
+    }
+    files = Array.isArray(files) ? files : [files];
+    files = files.map(f => f.replaceAll('\\', '/'));
+    files = files.filter(f => !tryCreatingDir(f, false));
+
+    // Special case: single file rename to a file path
+    if (isSingleFile && isDestFile) {
+      for (const f of files) {
+        allFilesSet.add(f);
+      }
+      continue;
+    }
+
+    // Use globSync results directly, filter dotfiles if needed
+    const finalFiles = options.all ? files : filterDotFiles(files, false);
+    if (isNegated) {
+      for (const f of finalFiles) {
+        allFilesSet.delete(f);
+      }
+    } else {
+      for (const f of finalFiles) {
+        allFilesSet.add(f);
+      }
+    }
+  }
+  return allFilesSet;
+}
+
+/**
  * Copy the files per a glob pattern, the first item(s) can be a 1 or more files to copy
  * while the last item in the array is the output outDirectory directory
  * @param {String[]} paths - includes both source(s) and outDirectory directory
@@ -186,29 +234,7 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
   }
 
   // Use a Set for deduplication from the start
-  const allFilesSet = new Set<string>();
-  for (const pattern of sources) {
-    let adjustedPattern = tryCreatingDir(pattern, pattern);
-    // fs.globSync treats /** differently, so adjust to /**/*
-    adjustedPattern = adjustedPattern.replace(/\*\*$/, '**/*');
-    let files = globSync(adjustedPattern, { exclude: excludeGlobs });
-    // If options.all is set and pattern does not start with a dot, also search for dot-prefixed files
-    if (options.all && pattern.includes('*') && !pattern.startsWith('.')) {
-      // e.g. '*.txt' => '.*.txt', '**/*.txt' => '**/.*.txt'
-      const dotPattern = pattern.replace(/(\*\.[^/]+$|\*$)/, '.$1').replace(/\*\*$/, '**/*');
-      if (dotPattern !== pattern) {
-        files = files.concat(globSync(dotPattern, { exclude: excludeGlobs }));
-      }
-    }
-    // Normalize all file paths to POSIX style (forward slashes)
-    files = files.map(f => f.replaceAll('\\', '/'));
-    // Remove directories manually (since nodir is not supported)
-    files = files.filter(f => !tryCreatingDir(f, false));
-    // Add to Set for deduplication
-    for (const f of files) {
-      allFilesSet.add(f);
-    }
-  }
+  const allFilesSet = getMatchedFiles(sources, excludeGlobs, isSingleFile, isDestFile, options);
 
   if (options.verbose) {
     console.log('glob found', Array.from(allFilesSet));
