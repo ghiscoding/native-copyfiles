@@ -18,8 +18,19 @@ The library is very similar to the [copyfiles](https://www.npmjs.com/package/cop
 > This mean calling: `copyfiles source target [options]` instead of `copyfiles [options] source target`
 > The JS API is also different since the destination is the 2nd function argument instead of the first argument.
 
-> [!NOTE]
-> This project now requires Node.JS >= 22.17.0 so that we can use the native `fs.glob`, however if you can't update your Node.JS just yet, then just stick with `native-copyfiles: ^1.3.7`
+[!NOTE]
+This project now uses [zeptomatch](https://github.com/ghiscoding/zeptomatch) for advanced glob pattern support (brace expansion, negation, extended wildcards, etc.), enabling more flexible and predictable file matching. Node.JS >= 22.17.0 is required for native file system features. If you can't update your Node.JS just yet, stick with `native-copyfiles: ^1.3.7`.
+
+### Advanced Glob Pattern Support
+
+With the addition of [zeptomatch](https://github.com/ghiscoding/zeptomatch), `native-copyfiles` now supports advanced glob patterns, including:
+
+- **Brace expansion**: e.g. `src/*.{js,ts}`
+- **Negation**: e.g. `['src/**/*.js', '!src/**/*.test.js']`
+- **Extended wildcards**: e.g. `**/*.js`, `*bar?.js`
+- **Dotfiles**: Use `-a`/`--all` to include files starting with a dot
+
+This makes it easier to match complex sets of files for copying, similar to Bash or advanced glob libraries.
 
 ### Install
 
@@ -53,8 +64,7 @@ Positionals:
 > [!NOTE]
 > Options **must** be provided after the command directories as suffix (the original project references them as prefix)
 
-copy some files, give it a bunch of arguments, (which can include globs), the last argument being
-the "out" directory (which will be created when necessary).  Note: on Windows globs must be **double quoted**, everybody else can quote however they please.
+Copy some files, give it a bunch of arguments (which can include advanced globs), the last argument being the "out" directory (which will be created when necessary). Note: on Windows globs must be **double quoted**, everybody else can quote however they please.
 
 ```bash
 copyfiles foo foobar foo/bar/*.js out
@@ -62,6 +72,24 @@ copyfiles foo foobar foo/bar/*.js out
 
 you now have a directory called `"out"`, with the files `"foo"` and `"foobar"` in it, it also has a directory named `"foo"` with a directory named
 `"bar"` in it that has all the files from `"foo/bar"` that match the glob.
+
+
+#### Examples of advanced glob usage
+
+**Brace expansion:**
+```bash
+copyfiles "src/*.{js,ts}" out
+```
+
+**Negation:**
+```bash
+copyfiles "src/**/*.js" out -e "**/*.test.js"
+```
+
+**Dotfiles:**
+```bash
+copyfiles -a ".*.env" out
+```
 
 If all the files are in a folder that you don't want in the path out path, ex:
 
