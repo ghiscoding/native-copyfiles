@@ -12,7 +12,7 @@
 
 Copy files easily via JavaScript or the CLI and cross-platform usage using [cli-nano](https://www.npmjs.com/package/cli-nano) dependency for the CLI.
 
-The library is very similar to the [copyfiles](https://www.npmjs.com/package/copyfiles) package, at least from the outside; however it is quite different internally. It uses native NodeJS as much as possible and so as a lot less dependencies (just 2 instead of 7), which makes this package a lot smaller compared to the original `copyfiles` project (1.8kB instead of 27.6kB gzip). The options are nearly the same (except for `--soft`, which is not implemented), there's also some new features that were added in this project (mainly the copy & rename and also dry-run features, see below).
+The library is very similar to the [copyfiles](https://www.npmjs.com/package/copyfiles) package, at least from the outside; however it is quite different internally. It uses native NodeJS code as much as possible and only has 2 dependencies (instead of 7 in `copyfiles`), which makes this package a lot smaller compared to the original `copyfiles` project (1.85kB instead of 27.6kB gzip). The options are nearly the same (except for `--soft`, which is not implemented), there's also some new features that were added in this project (mainly the copy/rename and also a dry-run feature, see below).
 
 > [!NOTE]
 > There is 1 noticeable difference with `copyfiles` package, all the CLI options must be provided as suffix and after the source/target directories command (the original `copyfiles` project has them as prefix).<br>
@@ -233,13 +233,13 @@ The `rename` callback gives you full control over the output filename and path.
 ```js
 import { copyfiles } from 'native-copyfiles';
 
-copyfiles(sources, destination, opt, callback);
+copyfiles(source[s], destination, options, callback);
 ```
 
 1. first argument is a string or an array of source paths
 2. second argument is the destination path
-3. third argument (`opt`) is the "options" argument
-4. and finally the last argument is a callback function that will be executed after the copy process
+3. third argument is the optional "options" argument
+4. and finally the last argument is an optional callback function that will be executed after the copy process ended
 
 ```js
 {
@@ -256,4 +256,4 @@ copyfiles(sources, destination, opt, callback);
 ```
 
 > [!WARNING]
-> Version 2.0 changed the JS API and moved the destination as the 2nd argument (which is different compared to v1.0 which previously had its destination inside the 1st argument array as the last element which was super confusing).
+> Version 2.0 changed the JS API and moved the destination as the 2nd argument (which is different compared to v1.0 which previously had its sources and destination inside the 1st argument array which was super confusing).
