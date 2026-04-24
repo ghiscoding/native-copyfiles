@@ -19,13 +19,7 @@
     "formatWithErrors": true,
     "lineWidth": 140,
     "indentStyle": "space",
-    "includes": [
-      "**",
-      "!**/.cache",
-      "!**/dist/**",
-      "!**/*.json",
-      "!**/node_modules/**"
-    ]
+    "includes": ["**", "!**/.cache", "!**/dist/**", "!**/*.json", "!**/node_modules/**"]
   },
   "javascript": {
     "parser": {
@@ -49,25 +43,23 @@
   },
   "linter": {
     "enabled": true,
-    "includes": [
-      "**",
-      "!**/.cache",
-      "!**/dist/**",
-      "!**/*.json",
-      "!**/node_modules/**"
-    ],
+    "includes": ["**", "!**/.cache", "!**/dist/**", "!**/*.json", "!**/node_modules/**"],
     "rules": {
       "correctness": {
         "useImportExtensions": {
           "options": {
-            "forceJsExtensions": true
+            "extensionMappings": {
+              "ts": "js",
+              "tsx": "js"
+            }
           }
         }
       },
       "recommended": true,
       "complexity": {
         "noForEach": "off",
-        "noStaticOnlyClass": "off"
+        "noStaticOnlyClass": "off",
+        "noUselessEscapeInRegex": "error"
       },
       "performance": {
         "noBarrelFile": "off",
@@ -81,6 +73,11 @@
         "noNonNullAssertion": "off",
         "noParameterAssign": "off",
         "useExponentiationOperator": "off"
+      },
+      "nursery": {
+        "noMisleadingReturnType": "error",
+        "noUnnecessaryTemplateExpression": "error",
+        "useDomQuerySelector": "error"
       }
     }
   },
