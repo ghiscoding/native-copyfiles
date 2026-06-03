@@ -68,7 +68,7 @@ describe('copyfiles', () => {
       writeFileSync('input/b.txt', 'b');
       writeFileSync('input/c.js', 'c');
       copyfiles('input/*.txt', 'output', {}, () => {
-        readdir('output/input', async (_err, files) => {
+        readdir('output/input', async (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt']);
           done();
         });
@@ -81,7 +81,7 @@ describe('copyfiles', () => {
       writeFileSync('input/b.txt', 'b');
       writeFileSync('input/c.js', 'c');
       copyfiles('input/*.txt', 'output', undefined, () => {
-        readdir('output/input', async (_err, files) => {
+        readdir('output/input', async (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt']);
           done();
         });
@@ -109,7 +109,7 @@ describe('copyfiles', () => {
       writeFileSync('input/b.txt', 'b');
       writeFileSync('input/c.js', 'c');
       copyfiles(['input/*.txt'], 'output', {}, () => {
-        readdir('output/input', (_err, files) => {
+        readdir('output/input', (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt']);
           //  'correct mode'
           // expect(statSync('output/input/a.txt').mode).toBe(33261);
@@ -131,7 +131,7 @@ describe('copyfiles', () => {
           exclude: ['**/*.js.txt', '**/*.ps.txt'],
         },
         () => {
-          readdir('output/input', (_err, files) => {
+          readdir('output/input', (_err: Error | null, files: string[]) => {
             expect(files).toEqual(['a.txt', 'b.txt']);
             done();
           });
@@ -154,7 +154,7 @@ describe('copyfiles', () => {
       writeFileSync('input/b.txt', 'b');
       writeFileSync('input/.c.txt', 'c');
       copyfiles(['input/*.txt'], 'output', { all: true }, () => {
-        readdir('output/input', (_err, files) => {
+        readdir('output/input', (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['.c.txt', 'a.txt', 'b.txt']);
           done();
         });
@@ -167,7 +167,7 @@ describe('copyfiles', () => {
       writeFileSync('input/b.txt', 'b');
       writeFileSync('input/c.js', 'c');
       copyfiles(['input/*.txt'], 'output', { up: 1 }, () => {
-        readdir('output', (_err, files) => {
+        readdir('output', (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt']);
           done();
         });
@@ -182,7 +182,7 @@ describe('copyfiles', () => {
       writeFileSync('input/c.js', 'c');
       writeFileSync('input/deep/d.txt', 'd');
       copyfiles('input/**/*.txt', 'output', { up: true }, () => {
-        readdir('output', (_err, files) => {
+        readdir('output', (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt', 'd.txt']);
           done();
         });
@@ -195,7 +195,7 @@ describe('copyfiles', () => {
       writeFileSync('input/other/b.txt', 'b');
       writeFileSync('input/other/c.js', 'c');
       copyfiles(['input/**/*.txt'], 'output', { up: 2 }, () => {
-        readdir('output', (_err, files) => {
+        readdir('output', (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt']);
           done();
         });
@@ -221,7 +221,7 @@ describe('copyfiles', () => {
       writeFileSync('input/b.txt', 'b');
       writeFileSync('input/other/c.js', 'c');
       copyfiles(['input/**/*.txt'], 'output', { flat: true }, () => {
-        readdir('output', (_err, files) => {
+        readdir('output', (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt']);
           done();
         });
@@ -248,12 +248,31 @@ describe('copyfiles', () => {
     const logSpy = vi.spyOn(console, 'log');
 
     copyfiles(['input/**/*'], 'output', { dryRun: true });
+
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('=== dry-run ==='));
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('copy: input/a.txt → output/input/a.txt'));
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('copy: input/other/c.js → output/input/other/c.js'));
     expect(existsSync('output/a.txt')).toBe(false);
     logSpy.mockRestore();
   });
+
+  test('dryRun does not copy files but logs actions and has no error in callback', () =>
+    new Promise((done: any) => {
+      writeFileSync('input/a.txt', 'a');
+      writeFileSync('input/other/c.js', 'c');
+      const logSpy = vi.spyOn(console, 'log');
+
+      copyfiles(['input/**/*'], 'output', { dryRun: true }, err => {
+        expect(err).toBeUndefined();
+        done();
+      });
+
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('=== dry-run ==='));
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('copy: input/a.txt → output/input/a.txt'));
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('copy: input/other/c.js → output/input/other/c.js'));
+      expect(existsSync('output/a.txt')).toBe(false);
+      logSpy.mockRestore();
+    }));
 
   test('dryRun with rename does not copy files but logs actions', () => {
     mkdirSync('input/sub');
@@ -277,9 +296,9 @@ describe('copyfiles', () => {
       writeFileSync('input/b.txt', 'b');
       writeFileSync('input/other/c.js', 'c');
       copyfiles('input/**/*.txt', 'output', { flat: true, verbose: true }, () => {
-        readdir('output', (_err, files) => {
+        readdir('output', (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt']);
-          const globCall = logSpy.mock.calls.find(call => call[0] === 'glob found');
+          const globCall = logSpy.mock.calls.find((call: any[]) => call[0] === 'glob found');
           expect(globCall).toBeTruthy();
           expect(new Set(globCall![1])).toEqual(new Set(['input/b.txt', 'input/other/a.txt']));
           expect(logSpy).toHaveBeenCalledWith('copy:', { from: 'input/other/a.txt', to: 'output/a.txt' });
@@ -366,7 +385,9 @@ describe('copyfiles', () => {
   });
 
   test('sets followSymbolicLinks when options.follow is true', async () => {
-    if (process.platform === 'win32') return;
+    if (process.platform === 'win32') {
+      return;
+    }
     mkdirSync('input/real', { recursive: true });
     writeFileSync('input/real/a.txt', 'test');
     symlinkSync('real', 'input/link');
@@ -374,10 +395,13 @@ describe('copyfiles', () => {
       copyfiles('input/link/*.txt', 'output', { follow: true }, err => {
         const files = globSync('output/**/*');
         console.log('output contents:', files);
-        const found = files.some(f => f.endsWith('a.txt'));
+        const found = files.some((f: string) => f.endsWith('a.txt'));
         expect(found).toBe(true);
-        if (err) reject(err);
-        else resolve();
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
       });
     });
   });
@@ -389,7 +413,7 @@ describe('copyfiles', () => {
       writeFileSync('input/other/b.txt', 'b');
       writeFileSync('input/other/c.js', 'c');
       copyfiles('input/**/*.txt', 'output', { up: 2, verbose: true }, () => {
-        readdir('output', (_err, files) => {
+        readdir('output', (_err: Error | null, files: string[]) => {
           expect(files).toEqual(['a.txt', 'b.txt']);
           expect(logSpy).toHaveBeenCalledWith('glob found', ['input/other/a.txt', 'input/other/b.txt']);
           expect(logSpy).toHaveBeenCalledWith('copy:', { from: 'input/other/a.txt', to: 'output/a.txt' });
@@ -405,7 +429,7 @@ describe('copyfiles', () => {
       writeFileSync('input/.env.production', 'SOME=VALUE');
       copyfiles('input/.env.production', 'output/.env', {}, err => {
         expect(err).toBeUndefined();
-        readdir('output', (_err, files) => {
+        readdir('output', (_err: Error | null, files: string[]) => {
           expect(files).toContain('.env');
           // Check file contents
           const content = readFileSync('output/.env', 'utf8');
@@ -420,7 +444,7 @@ describe('copyfiles', () => {
       writeFileSync('input/original.txt', 'HELLO WORLD');
       copyfiles(['input/original.txt'], 'output/renamed.txt', {}, err => {
         expect(err).toBeUndefined();
-        readdir('output', (_err, files) => {
+        readdir('output', (_err: Error | null, files: string[]) => {
           expect(files).toContain('renamed.txt');
           // Check file contents
           const content = readFileSync('output/renamed.txt', 'utf8');
@@ -787,7 +811,7 @@ describe('copyfiles', () => {
       writeFileSync('input/bar2.txt', 'bar');
       writeFileSync('input/baz3.txt', 'baz');
       copyfiles(['input/{foo,bar}*.txt'], 'output', {}, () => {
-        readdir('output/input', (_err, files) => {
+        readdir('output/input', (_err: Error | null, files: string[]) => {
           expect(files.sort()).toEqual(['bar2.txt', 'foo1.txt']);
           done();
         });
@@ -801,7 +825,7 @@ describe('copyfiles', () => {
       writeFileSync('input/c.test.js', 'c');
       writeFileSync('input/d.js', 'd');
       copyfiles(['input/*.js', '!input/*.spec.js', '!input/*.test.js'], 'output', {}, () => {
-        readdir('output/input', (_err, files) => {
+        readdir('output/input', (_err: Error | null, files: string[]) => {
           expect((files || []).sort()).toEqual(['a.js', 'd.js']);
           done();
         });

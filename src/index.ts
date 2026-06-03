@@ -5,6 +5,11 @@ import type { CopyFileOptions } from './interfaces.js';
 
 export type * from './interfaces.js';
 
+/** Convert an item to an array if it is not already one */
+function arrify<T>(item: T | T[]): T[] {
+  return Array.isArray(item) ? item : [item];
+}
+
 /**
  * Check if a directory exists, if not then create it
  * @param {String} dir - directory to create
@@ -54,8 +59,7 @@ export function getDestinationPath(inFile: string, outDir: string, options: Copy
 
   // 1. Single file rename (no glob, dest is not a directory, no *)
   if (isSingleFileRename && !outDir.includes('*')) {
-    const dest = outDir;
-    return callRenameWhenDefined(inFile, dest, options);
+    return callRenameWhenDefined(inFile, outDir, options);
   }
 
   // 2. Wildcard pattern in destination
@@ -82,12 +86,7 @@ export function getDestinationPath(inFile: string, outDir: string, options: Copy
   }
 
   // 3. Flat or up logic (no wildcard)
-  let baseDir: string;
-  if (options.flat || upCount === true) {
-    baseDir = outDir;
-  } else {
-    baseDir = join(outDir, dealWith(fileDir, upCount));
-  }
+  const baseDir = options.flat || upCount === true ? outDir : join(outDir, dealWith(fileDir, upCount));
   const dest = join(baseDir, fileName);
 
   return callRenameWhenDefined(inFile, dest, options);
@@ -107,7 +106,9 @@ function displayStatWhenEnabled(options: CopyFileOptions, count: number) {
  * @param dot - if true, include dotfiles/folders; otherwise, filter them out
  */
 export function filterDotFiles(paths: string[], dot: boolean): string[] {
-  if (dot) return paths;
+  if (dot) {
+    return paths;
+  }
   return paths.filter(p => {
     // Remove files/dirs starting with a dot after last slash
     const base = p.split(/[\\/]/).pop();
@@ -139,7 +140,8 @@ function getMatchedFiles(
   const allFilesSet = new Set<string>();
   for (const pattern of sources) {
     const isNegated = typeof pattern === 'string' && pattern.startsWith('!');
-    const adjustedPattern = tryCreatingDir(isNegated ? pattern.slice(1) : pattern, isNegated ? pattern.slice(1) : pattern);
+    const dirPart = isNegated ? pattern.slice(1) : pattern;
+    const adjustedPattern = tryCreatingDir(dirPart, dirPart);
     let files = globSync(adjustedPattern, { exclude: excludeGlobs }) || [];
     if (options.all && adjustedPattern.includes('*') && !adjustedPattern.startsWith('.')) {
       const dotPattern = adjustedPattern.replace(/(\*\.[^/]+$|\*$)/, '.$1');
@@ -147,7 +149,7 @@ function getMatchedFiles(
         files = files.concat(globSync(dotPattern, { exclude: excludeGlobs }));
       }
     }
-    files = Array.isArray(files) ? files : [files];
+    files = arrify(files);
     files = files.map(f => f.replaceAll('\\', '/'));
     files = files.filter(f => !tryCreatingDir(f, false));
 
@@ -183,7 +185,7 @@ function getMatchedFiles(
  */
 export function copyfiles(sources: string | string[], outPath: string, options: CopyFileOptions = {}, callback?: (e?: Error) => void) {
   const cb = callback || options.callback;
-  sources = Array.isArray(sources) ? sources : [sources];
+  sources = arrify(sources);
 
   if (options.verbose || options.stat) {
     console.time('Execution time');
@@ -226,12 +228,8 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
   }
 
   // Set default excludeGlobs only if not provided by user
-  let excludeGlobs: string[];
-  if (Array.isArray(options.exclude) && options.exclude.length > 0) {
-    excludeGlobs = options.exclude;
-  } else {
-    excludeGlobs = ['**/.git/**', '**/node_modules/**'];
-  }
+  const excludeGlobs =
+    Array.isArray(options.exclude) && options.exclude.length > 0 ? options.exclude : ['**/.git/**', '**/node_modules/**'];
 
   // Use a Set for deduplication from the start
   const allFilesSet = getMatchedFiles(sources, excludeGlobs, isSingleFile, isDestFile, options);
@@ -242,8 +240,11 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
 
   if (options.error && allFilesSet.size < 1) {
     const err = new Error('nothing copied');
-    if (typeof cb === 'function') cb(err);
-    else throw err;
+    if (typeof cb === 'function') {
+      cb(err);
+    } else {
+      throw err;
+    }
     return;
   }
 
@@ -255,7 +256,9 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
       console.log(`Files copied:   0`);
       console.timeEnd('Execution time');
     }
-    if (typeof cb === 'function') cb();
+    if (typeof cb === 'function') {
+      cb();
+    }
     return;
   }
 
@@ -269,7 +272,9 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
     displayStatWhenEnabled(options, allFilesSet.size);
     console.log(head);
 
-    if (typeof cb === 'function') cb();
+    if (typeof cb === 'function') {
+      cb();
+    }
     return;
   }
 
@@ -279,16 +284,22 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
       outPath,
       options,
       err => {
-        if (hasError) return;
+        if (hasError) {
+          return;
+        }
         if (err) {
           hasError = true;
-          if (typeof cb === 'function') cb(err);
+          if (typeof cb === 'function') {
+            cb(err);
+          }
           return;
         }
         completed++;
         if (completed === allFilesSet.size) {
           displayStatWhenEnabled(options, allFilesSet.size);
-          if (typeof cb === 'function') cb();
+          if (typeof cb === 'function') {
+            cb();
+          }
         }
       },
       isSingleFile && isDestFile, // pass as single rename mode
@@ -324,12 +335,12 @@ function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions
   const writeStream = createWriteStream(dest);
 
   let called = false;
-  function onceCallback(err?: Error) {
+  const onceCallback = (err?: Error) => {
     if (!called) {
       called = true;
       cb(err);
     }
-  }
+  };
 
   readStream.on('error', onceCallback);
   writeStream.on('error', onceCallback);
