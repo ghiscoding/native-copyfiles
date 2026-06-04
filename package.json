@@ -35,7 +35,7 @@
     "url": "https://github.com/ghiscoding/native-copyfiles/issues"
   },
   "scripts": {
-    "build": "npm run clean && npm run biome:write && tsc --outDir dist",
+    "build": "npm run clean && npm run biome:write && tsc -p tsconfig.build.json",
     "clean": "premove dist",
     "biome:check": "npm run biome:lint:check && npm run biome:format:check",
     "biome:write": "npm run biome:lint:write && npm run biome:format:write",

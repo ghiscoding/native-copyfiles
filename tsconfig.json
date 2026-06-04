@@ -21,6 +21,6 @@
       "declarationMap": true,
       "types": ["node"]
     },
-    "exclude": ["node_modules", "**/*.spec.ts"],
+    "exclude": ["node_modules"],
     "include": ["src/**/*", "index.d.ts"]
   }
