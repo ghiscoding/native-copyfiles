@@ -65,7 +65,7 @@
     "@vitest/coverage-v8": "^4.1.9",
     "premove": "^4.0.0",
     "release-it": "^20.2.1",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.1.2",
     "vitest": "^4.1.9"
   },
