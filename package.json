@@ -64,7 +64,7 @@
     "@types/picomatch": "^4.0.3",
     "@vitest/coverage-v8": "^4.1.10",
     "premove": "^4.0.0",
-    "release-it": "^20.2.1",
+    "release-it": "^21.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"
