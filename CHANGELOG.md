@@ -1,6 +1,12 @@
 # Change Log 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.4](https://github.com/ghiscoding/native-copyfiles/compare/v2.0.3...v2.0.4) (2026-08-22)
+
+### Bug Fixes
+
+* **security:** harden option maps against prototype pollution ([#93](https://github.com/ghiscoding/native-copyfiles/issues/93)) ([70d71ec](https://github.com/ghiscoding/native-copyfiles/commit/70d71ece057dea123789f8f53822d900830213c7))
+
 ## [2.0.3](https://github.com/ghiscoding/native-copyfiles/compare/v2.0.2...v2.0.3) (2026-06-03)
 
 ### Bug Fixes
