@@ -88,6 +88,18 @@ describe('copyfiles', () => {
       });
     }));
 
+  test('ignores inherited option properties', () =>
+    new Promise((done: any) => {
+      writeFileSync('input/a.txt', 'a');
+      const options = Object.create({ flat: true });
+
+      copyfiles('input/a.txt', 'output', options, () => {
+        expect(existsSync('output/input/a.txt')).toBe(true);
+        expect(existsSync('output/a.txt')).toBe(false);
+        done();
+      });
+    }));
+
   test('copies files using directory pattern with /**', () =>
     new Promise((done: any) => {
       writeFileSync('input/a.txt', 'a');
@@ -787,6 +799,12 @@ describe('copyfiles', () => {
     it('getDestinationPath - flat branch', () => {
       const result = getDestinationPath('foo/bar.txt', 'dest', { flat: true }, false);
       expect(result.replaceAll('\\', '/').endsWith(posixJoin('dest', 'bar.txt'))).toBe(true);
+    });
+
+    it('getDestinationPath ignores inherited option properties', () => {
+      const options = Object.create({ flat: true });
+      const result = getDestinationPath('foo/bar.txt', 'dest', options, false);
+      expect(result.replaceAll('\\', '/')).toBe(posixJoin('dest', 'foo', 'bar.txt'));
     });
 
     it('getDestinationPath - up === true branch', () => {

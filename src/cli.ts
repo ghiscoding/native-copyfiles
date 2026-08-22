@@ -24,6 +24,57 @@ function handleError(err?: Error) {
 }
 
 try {
+  // cli-nano resolves option names through dynamic property access. Keep this
+  // lookup table free of inherited keys such as "__proto__" and "constructor".
+  const optionDefinitions = {
+    all: {
+      alias: 'a',
+      type: 'boolean',
+      describe: 'Include files & directories begining with a dot (.)',
+    },
+    dryRun: {
+      alias: 'd',
+      type: 'boolean',
+      describe: 'Show what would be copied, but do not actually copy any files',
+    },
+    error: {
+      alias: 'E',
+      type: 'boolean',
+      describe: 'Throw error if nothing is copied',
+    },
+    exclude: {
+      alias: 'e',
+      type: 'array',
+      describe: 'Pattern or glob to exclude (may be passed multiple times)',
+    },
+    flat: {
+      alias: 'f',
+      type: 'boolean',
+      describe: 'Flatten the output',
+    },
+    follow: {
+      alias: 'F',
+      type: 'boolean',
+      describe: 'Follow symbolink links',
+    },
+    stat: {
+      alias: 's',
+      type: 'boolean',
+      describe: 'Show statistics after execution (execution time + file count)',
+    },
+    up: {
+      alias: 'u',
+      type: 'number',
+      describe: 'Slice a path off the bottom of the paths',
+    },
+    verbose: {
+      alias: 'V',
+      type: 'boolean',
+      describe: 'Print more information to console',
+    },
+  } as const;
+  const options = Object.assign(Object.create(null) as typeof optionDefinitions, optionDefinitions);
+
   const config = {
     command: {
       name: 'copyfiles',
@@ -51,53 +102,7 @@ try {
         },
       ],
     },
-    options: {
-      all: {
-        alias: 'a',
-        type: 'boolean',
-        describe: 'Include files & directories begining with a dot (.)',
-      },
-      dryRun: {
-        alias: 'd',
-        type: 'boolean',
-        describe: 'Show what would be copied, but do not actually copy any files',
-      },
-      error: {
-        alias: 'E',
-        type: 'boolean',
-        describe: 'Throw error if nothing is copied',
-      },
-      exclude: {
-        alias: 'e',
-        type: 'array',
-        describe: 'Pattern or glob to exclude (may be passed multiple times)',
-      },
-      flat: {
-        alias: 'f',
-        type: 'boolean',
-        describe: 'Flatten the output',
-      },
-      follow: {
-        alias: 'F',
-        type: 'boolean',
-        describe: 'Follow symbolink links',
-      },
-      stat: {
-        alias: 's',
-        type: 'boolean',
-        describe: 'Show statistics after execution (execution time + file count)',
-      },
-      up: {
-        alias: 'u',
-        type: 'number',
-        describe: 'Slice a path off the bottom of the paths',
-      },
-      verbose: {
-        alias: 'V',
-        type: 'boolean',
-        describe: 'Print more information to console',
-      },
-    },
+    options,
     version: readPackage().version,
   } as const;
 
