@@ -40,6 +40,10 @@ function throwOrCallback(err: Error, cb?: (e?: Error) => void) {
   }
 }
 
+function createSafeOptions(options: CopyFileOptions): CopyFileOptions {
+  return Object.assign(Object.create(null) as CopyFileOptions, options);
+}
+
 function callRenameWhenDefined(inFile: string, dest: string, options: CopyFileOptions): string {
   if (typeof options.rename === 'function') {
     return options.rename(inFile, dest);
@@ -51,6 +55,7 @@ function callRenameWhenDefined(inFile: string, dest: string, options: CopyFileOp
  * Calculate the destination path for a given input file and options.
  */
 export function getDestinationPath(inFile: string, outDir: string, options: CopyFileOptions, isSingleFileRename = false): string {
+  options = createSafeOptions(options);
   const fileDir = dirname(inFile);
   const fileName = basename(inFile);
   const srcExt = extname(fileName);
@@ -184,6 +189,9 @@ function getMatchedFiles(
  * @param {(e?: Error) => void} callback - optionally callback that will be executed after copy is finished or when an error occurs
  */
 export function copyfiles(sources: string | string[], outPath: string, options: CopyFileOptions = {}, callback?: (e?: Error) => void) {
+  // Treat options as data rather than inheriting behavior from Object.prototype.
+  // This also safely preserves an own "__proto__" key if options came from JSON.
+  options = createSafeOptions(options);
   const cb = callback || options.callback;
   sources = arrify(sources);
 
