@@ -57,7 +57,7 @@
           "level": "warn"
         }
       },
-      "recommended": true,
+      "preset": "recommended",
       "complexity": {
         "noForEach": "off",
         "noStaticOnlyClass": "off",
