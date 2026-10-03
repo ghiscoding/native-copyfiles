@@ -1,4 +1,5 @@
-import { createReadStream, createWriteStream, existsSync, globSync, mkdirSync, type PathLike, statSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, globSync, mkdirSync, type ReadStream, statSync, type WriteStream } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { basename, dirname, extname, join, normalize, posix, sep } from 'node:path';
 import untildify from 'untildify';
 import type { CopyFileOptions } from './interfaces.js';
@@ -121,7 +122,7 @@ export function filterDotFiles(paths: string[], dot: boolean): string[] {
   });
 }
 
-function tryCreatingDir(path: PathLike, defaultReturn: any) {
+function tryCreatingDir<T>(path: string, defaultReturn: T): string | T {
   try {
     if (statSync(path).isDirectory()) {
       return `${path}/**`;
@@ -143,20 +144,34 @@ function getMatchedFiles(
   options: CopyFileOptions,
 ): Set<string> {
   const allFilesSet = new Set<string>();
+  const filesByPattern = new Map<string, string[]>();
   for (const pattern of sources) {
     const isNegated = typeof pattern === 'string' && pattern.startsWith('!');
     const dirPart = isNegated ? pattern.slice(1) : pattern;
-    const adjustedPattern = tryCreatingDir(dirPart, dirPart);
-    let files = globSync(adjustedPattern, { exclude: excludeGlobs }) || [];
-    if (options.all && adjustedPattern.includes('*') && !adjustedPattern.startsWith('.')) {
-      const dotPattern = adjustedPattern.replace(/(\*\.[^/]+$|\*$)/, '.$1');
-      if (dotPattern !== adjustedPattern) {
-        files = files.concat(globSync(dotPattern, { exclude: excludeGlobs }));
+    let files = filesByPattern.get(dirPart);
+    if (!files) {
+      const adjustedPattern = tryCreatingDir(dirPart, dirPart);
+      let entries = globSync(adjustedPattern, { exclude: excludeGlobs, withFileTypes: true });
+      if (options.all && adjustedPattern.includes('*') && !adjustedPattern.startsWith('.')) {
+        const dotPattern = adjustedPattern.replace(/(\*\.[^/]+$|\*$)/, '.$1');
+        if (dotPattern !== adjustedPattern) {
+          entries = entries.concat(globSync(dotPattern, { exclude: excludeGlobs, withFileTypes: true }));
+        }
       }
+      files = [];
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          continue;
+        }
+        const filePath = join(entry.parentPath, entry.name).replaceAll('\\', '/');
+        // Dirents identify regular files without an additional stat; symlinks
+        // still need their target checked to preserve directory filtering.
+        if (!entry.isSymbolicLink() || !tryCreatingDir(filePath, false)) {
+          files.push(filePath);
+        }
+      }
+      filesByPattern.set(dirPart, files);
     }
-    files = arrify(files);
-    files = files.map(f => f.replaceAll('\\', '/'));
-    files = files.filter(f => !tryCreatingDir(f, false));
 
     // Special case: single file rename to a file path
     if (isSingleFile && isDestFile) {
@@ -194,6 +209,7 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
   options = createSafeOptions(options);
   const cb = callback || options.callback;
   sources = arrify(sources);
+  const concurrency = options.concurrency === undefined ? Math.min(32, availableParallelism()) : options.concurrency;
 
   if (options.verbose || options.stat) {
     console.time('Execution time');
@@ -204,6 +220,8 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
     errorMsg = 'Please make sure to provide both <inFile> and <outDirectory>, i.e.: "copyfiles <inFile> <outDirectory>"';
   } else if (options.flat && options.up) {
     errorMsg = 'Cannot use --flat in conjunction with --up option.';
+  } else if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+    errorMsg = 'Concurrency must be a positive safe integer.';
   }
   if (errorMsg) {
     throwOrCallback(new Error(errorMsg), cb);
@@ -236,8 +254,8 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
   }
 
   // Set default excludeGlobs only if not provided by user
-  const excludeGlobs =
-    Array.isArray(options.exclude) && options.exclude.length > 0 ? options.exclude : ['**/.git/**', '**/node_modules/**'];
+  const exclude = options.exclude === undefined ? [] : arrify(options.exclude);
+  const excludeGlobs = exclude.length > 0 ? exclude : ['**/.git/**', '**/node_modules/**'];
 
   // Use a Set for deduplication from the start
   const allFilesSet = getMatchedFiles(sources, excludeGlobs, isSingleFile, isDestFile, options);
@@ -255,9 +273,6 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
     }
     return;
   }
-
-  let completed = 0;
-  let hasError = false;
 
   if (allFilesSet.size === 0) {
     if (options.verbose || options.stat) {
@@ -286,33 +301,50 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
     return;
   }
 
-  for (const inFile of allFilesSet) {
-    copyFileStream(
-      inFile,
-      outPath,
-      options,
-      err => {
-        if (hasError) {
-          return;
-        }
-        if (err) {
-          hasError = true;
-          if (typeof cb === 'function') {
-            cb(err);
+  const files = allFilesSet.values();
+  const createdDirs = new Set<string>();
+  const activeStreams = new Set<ReadStream | WriteStream>();
+  let nextFile = files.next();
+  let active = 0;
+  let firstError: Error | undefined;
+  let finished = false;
+
+  const pump = () => {
+    while (!firstError && active < concurrency && !nextFile.done) {
+      const inFile = nextFile.value;
+      nextFile = files.next();
+      active++;
+      copyFileStream(
+        inFile,
+        outPath,
+        options,
+        err => {
+          active--;
+          if (err && !firstError) {
+            firstError = err;
+            for (const stream of activeStreams) {
+              stream.destroy();
+            }
           }
-          return;
-        }
-        completed++;
-        if (completed === allFilesSet.size) {
-          displayStatWhenEnabled(options, allFilesSet.size);
-          if (typeof cb === 'function') {
-            cb();
-          }
-        }
-      },
-      isSingleFile && isDestFile, // pass as single rename mode
-    );
-  }
+          pump();
+        },
+        isSingleFile && isDestFile,
+        createdDirs,
+        activeStreams,
+      );
+    }
+    // Wait for every active stream to close before reporting an error.
+    if (active === 0 && !finished) {
+      finished = true;
+      if (!firstError) {
+        displayStatWhenEnabled(options, allFilesSet.size);
+      }
+      if (typeof cb === 'function') {
+        cb(firstError);
+      }
+    }
+  };
+  pump();
 }
 
 /**
@@ -323,17 +355,27 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
  * @param {(e?: Error) => void} cb
  * @param {Boolean} isSingleFileRename - whether the operation is a single file rename (no glob, dest is not a directory, no *)
  */
-function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions, cb: (e?: Error) => void, isSingleFileRename = false) {
-  outDir = outDir.startsWith('~') ? untildify(outDir) : outDir;
+function copyFileStream(
+  inFile: string,
+  outDir: string,
+  options: CopyFileOptions,
+  cb: (e?: Error) => void,
+  isSingleFileRename: boolean,
+  createdDirs: Set<string>,
+  activeStreams: Set<ReadStream | WriteStream>,
+) {
   let dest: string;
   try {
     dest = getDestinationPath(inFile, outDir, options, isSingleFileRename);
+    const destDir = dirname(dest);
+    if (!createdDirs.has(destDir)) {
+      createDir(destDir);
+      createdDirs.add(destDir);
+    }
   } catch (err) {
     cb(err as Error);
     return;
   }
-
-  createDir(dirname(dest));
 
   if (options.verbose) {
     console.log('copy:', { from: convertToPosix(inFile), to: convertToPosix(dest) });
@@ -341,24 +383,35 @@ function copyFileStream(inFile: string, outDir: string, options: CopyFileOptions
 
   const readStream = createReadStream(inFile);
   const writeStream = createWriteStream(dest);
-
-  let called = false;
-  const onceCallback = (err?: Error) => {
-    if (!called) {
-      called = true;
-      cb(err);
+  activeStreams.add(readStream);
+  activeStreams.add(writeStream);
+  let error: Error | undefined;
+  let remaining = 2;
+  const fail = (err: Error) => {
+    error ??= err;
+    readStream.destroy();
+    writeStream.destroy();
+  };
+  const close = (stream: ReadStream | WriteStream) => {
+    activeStreams.delete(stream);
+    if (--remaining === 0) {
+      cb(error);
     }
   };
-
-  readStream.on('error', onceCallback);
-  writeStream.on('error', onceCallback);
-  writeStream.on('close', () => {
-    // Only execute callback if not already called by an error
-    if (!called) {
-      onceCallback();
+  readStream.once('error', fail);
+  writeStream.once('error', fail);
+  readStream.once('close', () => {
+    if (!readStream.readableEnded && !error) {
+      fail(new Error(`Read stream closed before copying ${inFile}`));
     }
+    close(readStream);
   });
-
+  writeStream.once('close', () => {
+    if (!writeStream.writableFinished && !error) {
+      fail(new Error(`Write stream closed before copying ${inFile}`));
+    }
+    close(writeStream);
+  });
   readStream.pipe(writeStream);
 }
 

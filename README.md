@@ -49,6 +49,7 @@ Positionals:
   Options:
     -u, --up       slice a path off the bottom of the paths                     [number]
     -a, --all      include files & directories begining with a dot (.)          [boolean]
+    -c, --concurrency  maximum simultaneous file copies                         [number]
     -d, --dry-run  show what would be copied, without actually copying anything [boolean]
     -f, --flat     flatten the output                                           [boolean]
     -e, --exclude  pattern or glob to exclude (may be passed multiple times)    [string|string[]]
@@ -242,9 +243,12 @@ copyfiles(source[s], destination, options, callback);
 3. third argument is the optional "options" argument
 4. and finally the last argument is an optional callback function that will be executed after the copy process ended
 
+By default, each call runs up to `os.availableParallelism()` file copies at once, capped at 32. Set `concurrency` in the API or `--concurrency` / `-c` in the CLI to override this limit with a positive integer. If a copy fails, queued copies stop and active streams close before the callback receives the error. Files already written may remain in the destination.
+
 ```js
 {
     verbose: boolean;     // print more information to console
+    concurrency: number; // maximum simultaneous copies (default: available parallelism, capped at 32)
     up: number;           // slice a path off the bottom of the paths
     exclude: string;      // exclude pattern
     all: boolean;         // include dot files

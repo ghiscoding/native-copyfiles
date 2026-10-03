@@ -32,6 +32,11 @@ try {
       type: 'boolean',
       describe: 'Include files & directories begining with a dot (.)',
     },
+    concurrency: {
+      alias: 'c',
+      type: 'number',
+      describe: 'Maximum simultaneous file copies (default: available parallelism, capped at 32)',
+    },
     dryRun: {
       alias: 'd',
       type: 'boolean',

@@ -2,6 +2,9 @@ export interface CopyFileOptions {
   /** Include files & directories beginning with a dot (.) */
   all?: boolean;
 
+  /** Maximum simultaneous file copies; defaults to os.availableParallelism(), capped at 32 */
+  concurrency?: number;
+
   /** Show what would be copied, but do not actually copy any files */
   dryRun?: boolean;
 
