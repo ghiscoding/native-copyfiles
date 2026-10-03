@@ -145,6 +145,7 @@ function getMatchedFiles(
 ): Set<string> {
   const allFilesSet = new Set<string>();
   const filesByPattern = new Map<string, string[]>();
+  const isSingleFileRename = isSingleFile && isDestFile;
   for (const pattern of sources) {
     const isNegated = typeof pattern === 'string' && pattern.startsWith('!');
     const dirPart = isNegated ? pattern.slice(1) : pattern;
@@ -173,22 +174,11 @@ function getMatchedFiles(
       filesByPattern.set(dirPart, files);
     }
 
-    // Special case: single file rename to a file path
-    if (isSingleFile && isDestFile) {
-      for (const f of files) {
-        allFilesSet.add(f);
-      }
-      continue;
-    }
-
-    // Use globSync results directly, filter dotfiles if needed
-    const finalFiles = options.all ? files : filterDotFiles(files, false);
-    if (isNegated) {
-      for (const f of finalFiles) {
+    const finalFiles = options.all || isSingleFileRename ? files : filterDotFiles(files, false);
+    for (const f of finalFiles) {
+      if (isNegated && !isSingleFileRename) {
         allFilesSet.delete(f);
-      }
-    } else {
-      for (const f of finalFiles) {
+      } else {
         allFilesSet.add(f);
       }
     }
@@ -265,20 +255,12 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
   }
 
   if (options.error && allFilesSet.size < 1) {
-    const err = new Error('nothing copied');
-    if (typeof cb === 'function') {
-      cb(err);
-    } else {
-      throw err;
-    }
+    throwOrCallback(new Error('nothing copied'), cb);
     return;
   }
 
   if (allFilesSet.size === 0) {
-    if (options.verbose || options.stat) {
-      console.log(`Files copied:   0`);
-      console.timeEnd('Execution time');
-    }
+    displayStatWhenEnabled(options, 0);
     if (typeof cb === 'function') {
       cb();
     }
@@ -304,47 +286,45 @@ export function copyfiles(sources: string | string[], outPath: string, options: 
   const files = allFilesSet.values();
   const createdDirs = new Set<string>();
   const activeStreams = new Set<ReadStream | WriteStream>();
-  let nextFile = files.next();
-  let active = 0;
+  const workerCount = Math.min(concurrency, allFilesSet.size);
+  let remainingWorkers = workerCount;
   let firstError: Error | undefined;
-  let finished = false;
 
-  const pump = () => {
-    while (!firstError && active < concurrency && !nextFile.done) {
-      const inFile = nextFile.value;
-      nextFile = files.next();
-      active++;
-      copyFileStream(
-        inFile,
-        outPath,
-        options,
-        err => {
-          active--;
-          if (err && !firstError) {
-            firstError = err;
-            for (const stream of activeStreams) {
-              stream.destroy();
-            }
+  const copyNext = () => {
+    const nextFile = files.next();
+    if (firstError || nextFile.done) {
+      // Each worker finishes once, after its current streams have closed.
+      if (--remainingWorkers === 0) {
+        if (!firstError) {
+          displayStatWhenEnabled(options, allFilesSet.size);
+        }
+        if (typeof cb === 'function') {
+          cb(firstError);
+        }
+      }
+      return;
+    }
+    copyFileStream(
+      nextFile.value,
+      outPath,
+      options,
+      err => {
+        if (err && !firstError) {
+          firstError = err;
+          for (const stream of activeStreams) {
+            stream.destroy();
           }
-          pump();
-        },
-        isSingleFile && isDestFile,
-        createdDirs,
-        activeStreams,
-      );
-    }
-    // Wait for every active stream to close before reporting an error.
-    if (active === 0 && !finished) {
-      finished = true;
-      if (!firstError) {
-        displayStatWhenEnabled(options, allFilesSet.size);
-      }
-      if (typeof cb === 'function') {
-        cb(firstError);
-      }
-    }
+        }
+        copyNext();
+      },
+      isSingleFile && isDestFile,
+      createdDirs,
+      activeStreams,
+    );
   };
-  pump();
+  for (let i = 0; i < workerCount; i++) {
+    copyNext();
+  }
 }
 
 /**
@@ -392,7 +372,11 @@ function copyFileStream(
     readStream.destroy();
     writeStream.destroy();
   };
-  const close = (stream: ReadStream | WriteStream) => {
+  const close = (stream: ReadStream | WriteStream, completed: boolean) => {
+    if (!completed && !error) {
+      const side = stream === readStream ? 'Read' : 'Write';
+      fail(new Error(`${side} stream closed before copying ${inFile}`));
+    }
     activeStreams.delete(stream);
     if (--remaining === 0) {
       cb(error);
@@ -400,18 +384,8 @@ function copyFileStream(
   };
   readStream.once('error', fail);
   writeStream.once('error', fail);
-  readStream.once('close', () => {
-    if (!readStream.readableEnded && !error) {
-      fail(new Error(`Read stream closed before copying ${inFile}`));
-    }
-    close(readStream);
-  });
-  writeStream.once('close', () => {
-    if (!writeStream.writableFinished && !error) {
-      fail(new Error(`Write stream closed before copying ${inFile}`));
-    }
-    close(writeStream);
-  });
+  readStream.once('close', () => close(readStream, readStream.readableEnded));
+  writeStream.once('close', () => close(writeStream, writeStream.writableFinished));
   readStream.pipe(writeStream);
 }
 

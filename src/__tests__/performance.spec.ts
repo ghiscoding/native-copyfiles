@@ -206,6 +206,34 @@ describe('copy resource management', () => {
     expect(createReadStream).not.toHaveBeenCalled();
   });
 
+  test('waits for active streams when a later worker encounters a synchronous error', async () => {
+    const sources = Array.from({ length: 64 }, (_, i) => join(input, `${i}.txt`));
+    for (const source of sources) {
+      writeFileSync(source, Buffer.alloc(8192));
+    }
+    const error = new Error('second rename failed');
+    let renamed = 0;
+    const rename = vi.fn((_src: string, dest: string) => {
+      if (++renamed === 2) {
+        throw error;
+      }
+      return dest;
+    });
+    const callback = vi.fn();
+    await new Promise<void>(resolve => {
+      copyfiles(sources, output, { flat: true, concurrency: 3, rename }, err => {
+        callback(err);
+        resolve();
+      });
+    });
+    await new Promise<void>(resolve => setImmediate(resolve));
+
+    expect(callback).toHaveBeenCalledExactlyOnceWith(error);
+    expect(rename).toHaveBeenCalledTimes(2);
+    expect(createReadStream).toHaveBeenCalledTimes(1);
+    assertStreamsClosed();
+  });
+
   test('reports per-file directory creation failures through the callback', async () => {
     writeFileSync(join(input, 'file.txt'), 'contents');
     mkdirSync(output);
