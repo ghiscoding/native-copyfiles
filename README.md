@@ -16,13 +16,11 @@ Copy files easily via JavaScript or the CLI and cross-platform usage using [cli-
 The library is very similar to the [copyfiles](https://www.npmjs.com/package/copyfiles) package, at least from the outside; however it is quite different internally. It uses native NodeJS code as much as possible and only has 2 dependencies (instead of 7 in `copyfiles`), which makes this package a lot smaller compared to the original `copyfiles` project (1.85kB instead of 27.6kB gzip). The options are nearly the same (except for `--soft`, which is not implemented), there's also some new features that were added in this project (mainly the copy/rename and also a dry-run feature, see below).
 
 > [!NOTE]
-> There is 1 noticeable difference with `copyfiles` package, all the CLI options must be provided as suffix and after the source/target directories command (the original `copyfiles` project has them as prefix).<br>
-> This mean calling: `copyfiles source target [options]` instead of `copyfiles [options] source target`
-> The JS API is also different since the destination is the 2nd function argument instead of the first argument.
+> The JavaScript API differs from the original `copyfiles` package: `native-copyfiles` takes the destination as a separate second argument, while `copyfiles` expects it as the last item in the first argument's paths array.
 
 ### Major Changes
 #### version 1.0
-- similar to [copyfiles](https://www.npmjs.com/package/copyfiles) package except that options are suffixes instead of prefixes
+- similar to the [copyfiles](https://www.npmjs.com/package/copyfiles) package
 
 #### version 1.0 to 2.0
 - see [Migration](https://github.com/ghiscoding/native-copyfiles/releases/tag/v2.0.0) details
@@ -62,9 +60,9 @@ Positionals:
 ```
 
 > [!NOTE]
-> Options **must** be provided after the command directories as suffix (the original project references them as prefix)
+> Options can appear before, after, or between the source and destination arguments, for example `copyfiles --flat source target` or `copyfiles source target --flat`.
 
-Copy some files, give it a bunch of arguments (which can include advanced globs), the last argument being the "out" directory (which will be created when necessary). Note: on Windows globs must be **double quoted**, everybody else can quote however they please.
+Copy some files, give it a bunch of arguments (which can include advanced globs), the last positional argument being the "out" directory (which will be created when necessary). Note: on Windows globs must be **double quoted**, everybody else can quote however they please.
 
 ```bash
 copyfiles foo foobar foo/bar/*.js out
