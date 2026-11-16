@@ -1,6 +1,12 @@
 # Change Log 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.1.2](https://github.com/ghiscoding/native-copyfiles/compare/v2.1.1...v2.1.2) (2026-11-16)
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies ([#103](https://github.com/ghiscoding/native-copyfiles/issues/103)) ([b10873f](https://github.com/ghiscoding/native-copyfiles/commit/b10873f8fdcfb8e7d5c96200e7820e8f36beb286))
+
 ## [2.1.1](https://github.com/ghiscoding/native-copyfiles/compare/v2.1.0...v2.1.1) (2026-10-05)
 
 ### Bug Fixes
