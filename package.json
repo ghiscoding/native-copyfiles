@@ -1,6 +1,6 @@
 {
   "name": "native-copyfiles",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "a small JS and CLI util to copy files",
   "bin": {
     "copyfiles": "dist/cli.js"

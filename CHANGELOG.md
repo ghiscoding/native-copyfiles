@@ -1,6 +1,12 @@
 # Change Log 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.1.3](https://github.com/ghiscoding/native-copyfiles/compare/v2.1.2...v2.1.3) (2026-11-16)
+
+### Bug Fixes
+
+* correct CLI option ordering documentation ([d4c7baa](https://github.com/ghiscoding/native-copyfiles/commit/d4c7baa157d0f80afac9bbbc57986b382ffc4718))
+
 ## [2.1.2](https://github.com/ghiscoding/native-copyfiles/compare/v2.1.1...v2.1.2) (2026-11-16)
 
 ### Bug Fixes
